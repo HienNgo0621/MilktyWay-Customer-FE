@@ -46,6 +46,7 @@ import {
   type CartItem,
   type Category,
   type Order,
+  type OrderStatus,
   type Product,
   type OrderActionRequest,
   type OrderComplaint,
@@ -104,6 +105,15 @@ const getTotals = (
 const uid = () =>
   globalThis.crypto?.randomUUID?.() ??
   `iv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const paymentLabels: Record<Order["paymentStatus"], string> = {
+  UNPAID: "Chưa thanh toán",
+  PENDING: "Đang chờ thanh toán",
+  PAID: "Đã thanh toán",
+  FAILED: "Thanh toán thất bại",
+  REFUND_PENDING: "Đang chờ hoàn tiền",
+  REFUNDED: "Đã hoàn tiền",
+};
 
 function App() {
   const navigate = useNavigate();
@@ -405,13 +415,13 @@ function App() {
     orderId: string,
     type: OrderActionRequest["type"],
     reason: string,
-  ) => {
+  ): Order | null => {
     try {
       const targetOrder = orders.find((order) => order.id === orderId);
 
       if (!targetOrder) {
         setToast("Không tìm thấy đơn hàng.");
-        return;
+        return null;
       }
 
       const canRequest =
@@ -420,14 +430,16 @@ function App() {
 
       if (!canRequest) {
         setToast("Đơn hàng đã quá thời hạn đổi hoặc hủy.");
-        return;
+        return null;
       }
+
+      const now = new Date().toISOString();
 
       const request: OrderActionRequest = {
         id: uid(),
         type,
         reason,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
         requestStatus: "PENDING",
       };
 
@@ -436,15 +448,18 @@ function App() {
 
       const updatedOrder: Order = {
         ...targetOrder,
+
         status: nextStatus,
+
         actionRequests: [...targetOrder.actionRequests, request],
+
         statusHistory:
           type === "CANCEL"
             ? [
                 ...targetOrder.statusHistory,
                 {
                   status: "CANCEL_REQUESTED",
-                  at: new Date().toISOString(),
+                  at: now,
                   note: "Khách hàng đã gửi yêu cầu hủy đơn.",
                 },
               ]
@@ -455,16 +470,125 @@ function App() {
         order.id === orderId ? updatedOrder : order,
       );
 
+      // Cập nhật danh sách đơn hàng chung
       setOrders(nextOrders);
 
+      // Đồng bộ đơn hàng vừa cập nhật với trang xác nhận
       if (lastOrder?.id === orderId) {
         setLastOrder(updatedOrder);
       }
 
       setToast("Đã ghi nhận yêu cầu của bạn.");
+
+      // QUAN TRỌNG: trả về đơn hàng mới cho component gọi hàm
+      return updatedOrder;
     } catch (error) {
       console.error("Lỗi khi gửi yêu cầu đổi/hủy đơn:", error);
       setToast("Không thể gửi yêu cầu. Vui lòng thử lại.");
+
+      return null;
+    }
+  };
+
+  const advanceOrderStatus = (orderId: string): Order | null => {
+    try {
+      // Tìm đơn hàng cần cập nhật
+      const targetOrder = orders.find((order) => order.id === orderId);
+
+      if (!targetOrder) {
+        setToast("Không tìm thấy đơn hàng.");
+        return null;
+      }
+
+      // Quy định trạng thái kế tiếp
+      const nextStatusMap: Partial<Record<OrderStatus, OrderStatus>> = {
+        PENDING_CONFIRMATION: "CONFIRMED",
+        CONFIRMED: "PREPARING",
+        PREPARING: "READY",
+        READY: "DELIVERING",
+        DELIVERING: "COMPLETED",
+
+        // Nhánh xác nhận hủy đơn
+        CANCEL_REQUESTED: "CANCELLED",
+      };
+
+      const nextStatus = nextStatusMap[targetOrder.status];
+
+      // Không còn trạng thái tiếp theo
+      if (!nextStatus) {
+        setToast("Đơn hàng đã ở trạng thái kết thúc.");
+        return null;
+      }
+
+      const now = new Date().toISOString();
+
+      // Nội dung lịch sử tương ứng từng trạng thái
+      const statusNotes: Partial<Record<OrderStatus, string>> = {
+        CONFIRMED: "Cửa hàng đã xác nhận đơn hàng.",
+        PREPARING: "Cửa hàng bắt đầu pha chế.",
+        READY: "Đơn hàng đã pha chế xong.",
+        DELIVERING: "Đơn hàng đang được giao đến bạn.",
+        COMPLETED: "Đơn hàng đã được giao hoàn tất.",
+        CANCELLED: "Cửa hàng đã xác nhận hủy đơn.",
+      };
+
+      // Nếu cửa hàng xác nhận hủy,
+      // cập nhật yêu cầu hủy đang chờ thành APPROVED
+      const updatedActionRequests =
+        nextStatus === "CANCELLED"
+          ? targetOrder.actionRequests.map((request) =>
+              request.type === "CANCEL" && request.requestStatus === "PENDING"
+                ? {
+                    ...request,
+                    requestStatus: "APPROVED" as const,
+                  }
+                : request,
+            )
+          : targetOrder.actionRequests;
+
+      // Tạo đối tượng đơn hàng mới
+      const updatedOrder: Order = {
+        ...targetOrder,
+
+        status: nextStatus,
+
+        actionRequests: updatedActionRequests,
+
+        // Thêm một bước vào timeline
+        statusHistory: [
+          ...targetOrder.statusHistory,
+          {
+            status: nextStatus,
+            at: now,
+            note:
+              statusNotes[nextStatus] ??
+              "Trạng thái đơn hàng đã được cập nhật.",
+          },
+        ],
+      };
+
+      // Cập nhật danh sách đơn hàng chung
+      setOrders((currentOrders) =>
+        currentOrders.map((order) =>
+          order.id === orderId ? updatedOrder : order,
+        ),
+      );
+
+      // Đồng bộ nếu đơn hàng đang là đơn vừa đặt gần nhất
+      if (lastOrder?.id === orderId) {
+        setLastOrder(updatedOrder);
+      }
+
+      setToast(`Đã chuyển trạng thái: ${statusNotes[nextStatus]}`);
+
+      // Trả về đơn hàng mới cho OrderTrackingPage
+      return updatedOrder;
+    } catch (error) {
+      console.error("Lỗi khi mô phỏng trạng thái đơn hàng:", error);
+
+      setToast("Không thể cập nhật trạng thái đơn hàng.");
+
+      return null;
     }
   };
 
@@ -606,7 +730,7 @@ function App() {
             path="/confirmation"
             element={
               <ConfirmationPage
-                order={lastOrder}
+                order={lastOrder ?? orders[0] ?? null}
                 onShop={() => navigate("/menu")}
                 onMockPaymentResult={mockPaymentResult}
               />
@@ -618,6 +742,8 @@ function App() {
               <OrderTrackingPage
                 orders={orders}
                 onRequestAction={requestOrderAction}
+                onAdvanceOrderStatus={advanceOrderStatus}
+                demoMode={import.meta.env.DEV}
               />
             }
           />
@@ -1817,7 +1943,6 @@ function CheckoutPage({
                   <b>Ví MoMo</b>
                   <small>Thanh toán mô phỏng, chưa kết nối MoMo thật.</small>
                 </span>
-                <span className="payment-tag">DEMO</span>
               </label>
 
               <label className="payment-option">
@@ -1831,7 +1956,6 @@ function CheckoutPage({
                   <b>Chuyển khoản ngân hàng</b>
                   <small>Hiển thị thông tin chuyển khoản mẫu.</small>
                 </span>
-                <span className="payment-tag">DEMO</span>
               </label>
             </div>
             <div className="demo-warning">

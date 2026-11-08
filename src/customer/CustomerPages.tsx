@@ -1,33 +1,31 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useState } from "react";
 import type {
   Order,
   OrderActionRequest,
   OrderStatus,
   MemberProfile,
-  PaymentStatus
-} from './data';
-import { money, demoPromotions, demoMembers,
-  memberTierLabels } from './data';
-
+  PaymentStatus,
+} from "./data";
+import { money, demoPromotions, demoMembers, memberTierLabels } from "./data";
 
 const statusLabels: Record<OrderStatus, string> = {
-  PENDING_CONFIRMATION: 'Chờ cửa hàng xác nhận',
-  CONFIRMED: 'Đã xác nhận',
-  PREPARING: 'Đang pha chế',
-  READY: 'Đã pha chế xong',
-  DELIVERING: 'Đang giao hàng',
-  COMPLETED: 'Đã hoàn tất',
-  CANCEL_REQUESTED: 'Đang chờ xử lý yêu cầu hủy',
-  CANCELLED: 'Đã hủy'
+  PENDING_CONFIRMATION: "Chờ cửa hàng xác nhận",
+  CONFIRMED: "Đã xác nhận",
+  PREPARING: "Đang pha chế",
+  READY: "Đã pha chế xong",
+  DELIVERING: "Đang giao hàng",
+  COMPLETED: "Đã hoàn tất",
+  CANCEL_REQUESTED: "Đang chờ xử lý yêu cầu hủy",
+  CANCELLED: "Đã hủy",
 };
 
 const paymentLabels: Record<PaymentStatus, string> = {
-  UNPAID: 'Chưa thanh toán',
-  PENDING: 'Đang chờ thanh toán',
-  PAID: 'Đã thanh toán',
-  FAILED: 'Thanh toán thất bại',
-  REFUND_PENDING: 'Đang chờ hoàn tiền',
-  REFUNDED: 'Đã hoàn tiền'
+  UNPAID: "Chưa thanh toán",
+  PENDING: "Đang chờ thanh toán",
+  PAID: "Đã thanh toán",
+  FAILED: "Thanh toán thất bại",
+  REFUND_PENDING: "Đang chờ hoàn tiền",
+  REFUNDED: "Đã hoàn tiền",
 };
 
 function formatDate(value: string): string {
@@ -37,16 +35,21 @@ function formatDate(value: string): string {
     return value;
   }
 
-  return date.toLocaleString('vi-VN');
+  return date.toLocaleString("vi-VN");
 }
 
 type OrderTrackingPageProps = {
   orders: Order[];
+
   onRequestAction: (
     orderId: string,
-    type: OrderActionRequest['type'],
-    reason: string
-  ) => void;
+    type: OrderActionRequest["type"],
+    reason: string,
+  ) => Order | null;
+
+  onAdvanceOrderStatus: (orderId: string) => Order | null;
+
+  demoMode: boolean;
 };
 
 type OrderHistoryPageProps = {
@@ -58,19 +61,16 @@ type MembershipPageProps = {
   onSave: (profile: MemberProfile) => void;
 };
 
-export function MembershipPage({
-  profile,
-  onSave
-}: MembershipPageProps) {
-  const [name, setName] = useState(profile?.name ?? '');
-  const [phone, setPhone] = useState(profile?.phone ?? '');
-  const [email, setEmail] = useState(profile?.email ?? '');
-  const [message, setMessage] = useState('');
+export function MembershipPage({ profile, onSave }: MembershipPageProps) {
+  const [name, setName] = useState(profile?.name ?? "");
+  const [phone, setPhone] = useState(profile?.phone ?? "");
+  const [email, setEmail] = useState(profile?.email ?? "");
+  const [message, setMessage] = useState("");
 
-  const normalizedPhone = phone.replace(/\s/g, '');
+  const normalizedPhone = phone.replace(/\s/g, "");
 
   const demoProfile = demoMembers.find(
-    (member) => member.phone === normalizedPhone
+    (member) => member.phone === normalizedPhone,
   );
 
   const currentProfile = profile ?? demoProfile ?? null;
@@ -79,12 +79,12 @@ export function MembershipPage({
     event.preventDefault();
 
     if (!/^0[0-9]{9}$/.test(normalizedPhone)) {
-      setMessage('Số điện thoại phải có 10 chữ số và bắt đầu bằng 0.');
+      setMessage("Số điện thoại phải có 10 chữ số và bắt đầu bằng 0.");
       return;
     }
 
     if (name.trim().length < 2) {
-      setMessage('Vui lòng nhập họ tên hợp lệ.');
+      setMessage("Vui lòng nhập họ tên hợp lệ.");
       return;
     }
 
@@ -95,16 +95,16 @@ export function MembershipPage({
         phone: normalizedPhone,
         email: email.trim(),
         points: profile?.points ?? 0,
-        tier: profile?.tier ?? 'BRONZE',
+        tier: profile?.tier ?? "BRONZE",
         discountPercent: profile?.discountPercent ?? 0,
-        joinedAt: profile?.joinedAt ?? new Date().toISOString()
+        joinedAt: profile?.joinedAt ?? new Date().toISOString(),
       };
 
       onSave(nextProfile);
-      setMessage('Thông tin hội viên đã được lưu trong bản demo.');
+      setMessage("Thông tin hội viên đã được lưu trong bản demo.");
     } catch (error) {
-      console.error('Lỗi khi lưu thông tin hội viên:', error);
-      setMessage('Không thể lưu thông tin hội viên.');
+      console.error("Lỗi khi lưu thông tin hội viên:", error);
+      setMessage("Không thể lưu thông tin hội viên.");
     }
   };
 
@@ -125,7 +125,7 @@ export function MembershipPage({
           <div className="member-stat-grid">
             <div>
               <small>Điểm thưởng</small>
-              <strong>{currentProfile.points.toLocaleString('vi-VN')}</strong>
+              <strong>{currentProfile.points.toLocaleString("vi-VN")}</strong>
             </div>
 
             <div>
@@ -139,17 +139,15 @@ export function MembershipPage({
             </div>
           </div>
 
-          <p>
-            Ngày tham gia: {formatDate(currentProfile.joinedAt)}
-          </p>
+          <p>Ngày tham gia: {formatDate(currentProfile.joinedAt)}</p>
         </div>
       )}
 
       <form className="feature-card feature-action-form" onSubmit={handleSave}>
         <h2>
           {currentProfile
-            ? 'Cập nhật thông tin thành viên'
-            : 'Đăng ký thành viên demo'}
+            ? "Cập nhật thông tin thành viên"
+            : "Đăng ký thành viên demo"}
         </h2>
 
         <label>
@@ -184,14 +182,14 @@ export function MembershipPage({
         </label>
 
         <button className="btn btn-primary" type="submit">
-          {currentProfile ? 'Lưu thay đổi' : 'Đăng ký thành viên'}
+          {currentProfile ? "Lưu thay đổi" : "Đăng ký thành viên"}
         </button>
 
         {message && <p className="form-feedback">{message}</p>}
 
         <p className="demo-warning">
-          Đây là hồ sơ thành viên mô phỏng trên trình duyệt. Chưa có xác thực
-          số điện thoại, OTP hoặc hệ thống tài khoản thật.
+          Đây là hồ sơ thành viên mô phỏng trên trình duyệt. Chưa có xác thực số
+          điện thoại, OTP hoặc hệ thống tài khoản thật.
         </p>
       </form>
 
@@ -261,7 +259,7 @@ export function PromotionsPage() {
           activePromotions.map((promotion) => (
             <article className="feature-card promotion-card" key={promotion.id}>
               <span className="eyebrow">
-                {promotion.memberOnly ? 'MEMBER OFFER' : 'SPECIAL OFFER'}
+                {promotion.memberOnly ? "MEMBER OFFER" : "SPECIAL OFFER"}
               </span>
 
               <h2>{promotion.name}</h2>
@@ -302,14 +300,14 @@ export function PromotionsPage() {
 }
 
 export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState("");
   const [searched, setSearched] = useState(false);
-
-  const normalizedPhone = phone.replace(/\s/g, '');
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const normalizedPhone = phone.replace(/\s/g, "");
 
   const customerOrders = searched
     ? orders.filter(
-        (order) => order.phone.replace(/\s/g, '') === normalizedPhone
+        (order) => order.phone.replace(/\s/g, "") === normalizedPhone,
       )
     : [];
 
@@ -326,7 +324,10 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
         <p>Tra cứu các đơn hàng đã đặt bằng số điện thoại của bạn.</p>
       </div>
 
-      <form className="feature-card feature-search-form" onSubmit={handleSearch}>
+      <form
+        className="feature-card feature-search-form"
+        onSubmit={handleSearch}
+      >
         <label>
           Số điện thoại đặt hàng
           <input
@@ -387,9 +388,201 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
                     <b>{paymentLabels[order.paymentStatus]}</b>
                   </div>
                 </div>
+
+                <div className="history-order-actions">
+                  <button
+                    type="button"
+                    className="btn btn-soft btn-small"
+                    onClick={() => setSelectedOrder(order)}
+                  >
+                    Xem chi tiết
+                  </button>
+                </div>
               </article>
             ))
           )}
+        </div>
+      )}
+      {selectedOrder && (
+        <div
+          className="order-modal-backdrop"
+          onClick={() => setSelectedOrder(null)}
+        >
+          <section
+            className="order-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {/* Tiêu đề Modal */}
+            <div className="feature-heading-row order-modal-header">
+              <div>
+                <span className="eyebrow">ORDER DETAILS</span>
+
+                <h2 id="order-modal-title">
+                  Chi tiết đơn hàng {selectedOrder.id}
+                </h2>
+
+                <p>Ngày đặt: {formatDate(selectedOrder.createdAt)}</p>
+              </div>
+
+              <button
+                type="button"
+                className="order-modal-close"
+                aria-label="Đóng cửa sổ chi tiết"
+                onClick={() => setSelectedOrder(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="summary-divider" />
+
+            {/* Thông tin người nhận và đơn hàng */}
+            <h3>Thông tin đơn hàng</h3>
+
+            <div className="feature-info-grid">
+              <div>
+                <small>Người nhận</small>
+                <b>{selectedOrder.name}</b>
+              </div>
+
+              <div>
+                <small>Số điện thoại</small>
+                <b>{selectedOrder.phone}</b>
+              </div>
+
+              <div>
+                <small>Địa chỉ giao hàng</small>
+                <b>{selectedOrder.address}</b>
+              </div>
+
+              <div>
+                <small>Chi nhánh</small>
+                <b>{selectedOrder.branchName}</b>
+              </div>
+
+              <div>
+                <small>Phương thức thanh toán</small>
+                <b>{selectedOrder.payment}</b>
+              </div>
+
+              <div>
+                <small>Trạng thái thanh toán</small>
+                <b>{paymentLabels[selectedOrder.paymentStatus]}</b>
+              </div>
+
+              <div>
+                <small>Trạng thái đơn hàng</small>
+                <b>{statusLabels[selectedOrder.status]}</b>
+              </div>
+            </div>
+
+            {selectedOrder.note && (
+              <div className="feature-card-inner">
+                <b>Ghi chú của khách hàng</b>
+                <p>{selectedOrder.note}</p>
+              </div>
+            )}
+
+            <div className="summary-divider" />
+
+            {/* Chi tiết sản phẩm */}
+            <h3>Chi tiết sản phẩm</h3>
+
+            {selectedOrder.items.map((item) => (
+              <div className="feature-order-item" key={item.id}>
+                <span>
+                  {item.name}
+
+                  <small>
+                    {item.detail} · Số lượng: {item.quantity}
+                  </small>
+                </span>
+
+                <b>{money(item.unitPrice * item.quantity)}</b>
+              </div>
+            ))}
+
+            <div className="summary-divider" />
+
+            {/* Chi phí */}
+            <div className="feature-order-item">
+              <span>Tạm tính</span>
+              <b>{money(selectedOrder.subtotal)}</b>
+            </div>
+
+            <div className="feature-order-item">
+              <span>Ưu đãi</span>
+              <b>−{money(selectedOrder.discount)}</b>
+            </div>
+
+            <div className="feature-order-item">
+              <span>Phí giao hàng</span>
+              <b>{money(selectedOrder.shipping)}</b>
+            </div>
+
+            <div className="summary-total">
+              <span>Tổng thanh toán</span>
+              <b>{money(selectedOrder.total)}</b>
+            </div>
+
+            <div className="summary-divider" />
+
+            {/* Timeline */}
+            <h3>Tiến trình đơn hàng</h3>
+
+            <div className="order-timeline">
+              {selectedOrder.statusHistory.map((item, index) => (
+                <div className="timeline-item" key={`${item.at}-${index}`}>
+                  <span className="timeline-dot" />
+
+                  <div>
+                    <b>{statusLabels[item.status]}</b>
+
+                    <p>{item.note}</p>
+
+                    <small>{formatDate(item.at)}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Các yêu cầu đổi hoặc hủy đơn */}
+            {selectedOrder.actionRequests.length > 0 && (
+              <>
+                <div className="summary-divider" />
+
+                <h3>Yêu cầu đổi / hủy đơn</h3>
+
+                {selectedOrder.actionRequests.map((request) => (
+                  <div className="feature-card-inner" key={request.id}>
+                    <b>
+                      {request.type === "CANCEL"
+                        ? "Yêu cầu hủy đơn"
+                        : "Yêu cầu thay đổi đơn"}
+                    </b>
+
+                    <p>{request.reason}</p>
+
+                    <small>Trạng thái yêu cầu: {request.requestStatus}</small>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Nút đóng Modal */}
+            <div className="history-order-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setSelectedOrder(null)}
+              >
+                Đóng
+              </button>
+            </div>
+          </section>
         </div>
       )}
     </section>
@@ -402,39 +595,39 @@ type ComplaintPageProps = {
     orderId: string,
     phone: string,
     category: string,
-    description: string
+    description: string,
   ) => boolean;
 };
 
 export function ComplaintPage({
   orders,
-  onCreateComplaint
+  onCreateComplaint,
 }: ComplaintPageProps) {
-  const [orderCode, setOrderCode] = useState('');
-  const [phone, setPhone] = useState('');
-  const [category, setCategory] = useState('Giao thiếu sản phẩm');
-  const [description, setDescription] = useState('');
-  const [message, setMessage] = useState('');
+  const [orderCode, setOrderCode] = useState("");
+  const [phone, setPhone] = useState("");
+  const [category, setCategory] = useState("Giao thiếu sản phẩm");
+  const [description, setDescription] = useState("");
+  const [message, setMessage] = useState("");
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const normalizedCode = orderCode.trim().toUpperCase();
-    const normalizedPhone = phone.replace(/\s/g, '');
+    const normalizedPhone = phone.replace(/\s/g, "");
 
     const order = orders.find(
       (item) =>
         item.id.toUpperCase() === normalizedCode &&
-        item.phone.replace(/\s/g, '') === normalizedPhone
+        item.phone.replace(/\s/g, "") === normalizedPhone,
     );
 
     if (!order) {
-      setMessage('Không tìm thấy đơn hàng tương ứng.');
+      setMessage("Không tìm thấy đơn hàng tương ứng.");
       return;
     }
 
     if (description.trim().length < 10) {
-      setMessage('Vui lòng mô tả vấn đề ít nhất 10 ký tự.');
+      setMessage("Vui lòng mô tả vấn đề ít nhất 10 ký tự.");
       return;
     }
 
@@ -442,16 +635,16 @@ export function ComplaintPage({
       order.id,
       normalizedPhone,
       category,
-      description.trim()
+      description.trim(),
     );
 
     if (!success) {
-      setMessage('Không thể gửi khiếu nại. Vui lòng thử lại.');
+      setMessage("Không thể gửi khiếu nại. Vui lòng thử lại.");
       return;
     }
 
-    setMessage('Khiếu nại đã được ghi nhận trong dữ liệu demo.');
-    setDescription('');
+    setMessage("Khiếu nại đã được ghi nhận trong dữ liệu demo.");
+    setDescription("");
   };
 
   return (
@@ -464,7 +657,10 @@ export function ComplaintPage({
         </p>
       </div>
 
-      <form className="feature-card feature-action-form" onSubmit={handleSubmit}>
+      <form
+        className="feature-card feature-action-form"
+        onSubmit={handleSubmit}
+      >
         <label>
           Mã đơn hàng
           <input
@@ -527,60 +723,104 @@ export function ComplaintPage({
 
 export function OrderTrackingPage({
   orders,
-  onRequestAction
+  onRequestAction,
+  onAdvanceOrderStatus,
+  demoMode,
 }: OrderTrackingPageProps) {
-  const [orderCode, setOrderCode] = useState('');
-  const [phone, setPhone] = useState('');
+  const [orderCode, setOrderCode] = useState("");
+  const [phone, setPhone] = useState("");
   const [searchedOrder, setSearchedOrder] = useState<Order | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [requestType, setRequestType] =
-    useState<OrderActionRequest['type']>('CANCEL');
-  const [reason, setReason] = useState('');
+    useState<OrderActionRequest["type"]>("CANCEL");
+  const [reason, setReason] = useState("");
 
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const normalizedCode = orderCode.trim().toUpperCase();
-    const normalizedPhone = phone.replace(/\s/g, '');
+    const normalizedPhone = phone.replace(/\s/g, "");
 
     const foundOrder = orders.find(
       (order) =>
         order.id.toUpperCase() === normalizedCode &&
-        order.phone.replace(/\s/g, '') === normalizedPhone
+        order.phone.replace(/\s/g, "") === normalizedPhone,
     );
 
     if (!foundOrder) {
       setSearchedOrder(null);
-      setError('Không tìm thấy đơn hàng. Vui lòng kiểm tra mã đơn và số điện thoại.');
+      setError(
+        "Không tìm thấy đơn hàng. Vui lòng kiểm tra mã đơn và số điện thoại.",
+      );
       return;
     }
 
     setSearchedOrder(foundOrder);
-    setError('');
-    setReason('');
+    setError("");
+    setReason("");
   };
 
   const canRequestAction =
     searchedOrder !== null &&
-    (searchedOrder.status === 'PENDING_CONFIRMATION' ||
-      searchedOrder.status === 'CONFIRMED');
+    (searchedOrder.status === "PENDING_CONFIRMATION" ||
+      searchedOrder.status === "CONFIRMED");
 
   const handleRequest = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!searchedOrder || !canRequestAction) {
-      setError('Đơn hàng hiện không còn trong thời gian có thể yêu cầu đổi hoặc hủy.');
+      setError(
+        "Đơn hàng hiện không còn trong thời gian có thể yêu cầu đổi hoặc hủy.",
+      );
       return;
     }
 
     if (reason.trim().length < 10) {
-      setError('Vui lòng nhập lý do tối thiểu 10 ký tự.');
+      setError("Vui lòng nhập lý do tối thiểu 10 ký tự.");
       return;
     }
 
-    onRequestAction(searchedOrder.id, requestType, reason.trim());
-    setReason('');
-    setError('Yêu cầu đã được ghi nhận trong dữ liệu demo.');
+    // Gọi hàm ở App.tsx và nhận đơn hàng sau cập nhật
+    const updatedOrder = onRequestAction(
+      searchedOrder.id,
+      requestType,
+      reason.trim(),
+    );
+
+    // Nếu xử lý thất bại thì không cập nhật giao diện
+    if (!updatedOrder) {
+      setError("Không thể gửi yêu cầu. Vui lòng thử lại.");
+      return;
+    }
+
+    // Đồng bộ state riêng của OrderTrackingPage
+    setSearchedOrder(updatedOrder);
+
+    setReason("");
+
+    setError(
+      requestType === "CANCEL"
+        ? "Yêu cầu hủy đơn đã được ghi nhận và đang chờ cửa hàng xử lý."
+        : "Yêu cầu thay đổi đơn hàng đã được ghi nhận.",
+    );
+  };
+
+  const handleDemoAdvance = () => {
+    if (!searchedOrder) {
+      return;
+    }
+
+    // Gọi hàm cập nhật trạng thái ở App.tsx
+    const updatedOrder = onAdvanceOrderStatus(searchedOrder.id);
+
+    if (!updatedOrder) {
+      return;
+    }
+
+    // Đồng bộ đơn hàng đang được tra cứu
+    setSearchedOrder(updatedOrder);
+
+    setError("");
   };
 
   return (
@@ -591,7 +831,10 @@ export function OrderTrackingPage({
         <p>Nhập mã đơn hàng và số điện thoại đã sử dụng khi đặt hàng.</p>
       </div>
 
-      <form className="feature-card feature-search-form" onSubmit={handleSearch}>
+      <form
+        className="feature-card feature-search-form"
+        onSubmit={handleSearch}
+      >
         <label>
           Mã đơn hàng
           <input
@@ -669,6 +912,28 @@ export function OrderTrackingPage({
             ))}
           </div>
 
+          {demoMode &&
+            searchedOrder.status !== "COMPLETED" &&
+            searchedOrder.status !== "CANCELLED" && (
+              <div className="demo-step-panel">
+                <div>
+                  <b>Demo trạng thái đơn hàng</b>
+
+                  <p>Bấm nút để mô phỏng bước xử lý tiếp theo của cửa hàng.</p>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-soft"
+                  onClick={handleDemoAdvance}
+                >
+                  {searchedOrder.status === "CANCEL_REQUESTED"
+                    ? "Demo: Cửa hàng xác nhận hủy"
+                    : "Demo Next Step"}
+                </button>
+              </div>
+            )}
+
           <div className="summary-divider" />
 
           <h3>Chi tiết sản phẩm</h3>
@@ -697,7 +962,9 @@ export function OrderTrackingPage({
                 <select
                   value={requestType}
                   onChange={(event) =>
-                    setRequestType(event.target.value as OrderActionRequest['type'])
+                    setRequestType(
+                      event.target.value as OrderActionRequest["type"],
+                    )
                   }
                 >
                   <option value="CANCEL">Yêu cầu hủy đơn hàng</option>
@@ -722,8 +989,8 @@ export function OrderTrackingPage({
               </button>
 
               <p className="form-feedback">
-                Yêu cầu chỉ được ghi nhận. Cửa hàng cần xác nhận trước khi đơn hàng
-                thực sự được thay đổi hoặc hủy.
+                Yêu cầu chỉ được ghi nhận. Cửa hàng cần xác nhận trước khi đơn
+                hàng thực sự được thay đổi hoặc hủy.
               </p>
             </form>
           )}
@@ -734,7 +1001,9 @@ export function OrderTrackingPage({
               {searchedOrder.actionRequests.map((request) => (
                 <div className="feature-card-inner" key={request.id}>
                   <b>
-                    {request.type === 'CANCEL' ? 'Yêu cầu hủy đơn' : 'Yêu cầu đổi đơn'}
+                    {request.type === "CANCEL"
+                      ? "Yêu cầu hủy đơn"
+                      : "Yêu cầu đổi đơn"}
                   </b>
                   <p>{request.reason}</p>
                   <small>Trạng thái: {request.requestStatus}</small>
