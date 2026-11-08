@@ -7,6 +7,7 @@ import type {
   PaymentStatus,
 } from "./data";
 import { money, demoPromotions, demoMembers, memberTierLabels } from "./data";
+import MockOtpStep from "./MockOtpStep";
 
 const statusLabels: Record<OrderStatus, string> = {
   PENDING_CONFIRMATION: "Chờ cửa hàng xác nhận",
@@ -90,14 +91,17 @@ export function MembershipPage({ profile, onSave }: MembershipPageProps) {
 
     try {
       const nextProfile: MemberProfile = {
-        id: profile?.id ?? `MEM-${Date.now()}`,
+        id: currentProfile?.id ?? `MEM-${Date.now()}`,
         name: name.trim(),
         phone: normalizedPhone,
         email: email.trim(),
-        points: profile?.points ?? 0,
-        tier: profile?.tier ?? "BRONZE",
-        discountPercent: profile?.discountPercent ?? 0,
-        joinedAt: profile?.joinedAt ?? new Date().toISOString(),
+
+        points: currentProfile?.points ?? 0,
+        tier: currentProfile?.tier ?? "BRONZE",
+        discountPercent: currentProfile?.discountPercent ?? 0,
+        joinedAt: currentProfile?.joinedAt ?? new Date().toISOString(),
+
+        pointHistory: currentProfile?.pointHistory ?? [],
       };
 
       onSave(nextProfile);
@@ -301,8 +305,13 @@ export function PromotionsPage() {
 
 export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
   const [phone, setPhone] = useState("");
-  const [searched, setSearched] = useState(false);
 
+  const [otpRequested, setOtpRequested] = useState(false);
+
+  // Chỉ có số điện thoại này sau khi OTP đúng.
+  const [verifiedPhone, setVerifiedPhone] = useState("");
+
+  const [error, setError] = useState("");
   // Chỉ lưu ID, không lưu object đơn hàng.
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -311,19 +320,23 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
     ? (orders.find((order) => order.id === selectedOrderId) ?? null)
     : null;
 
-  const normalizedPhone = phone.replace(/\s/g, "");
+  const normalizedPhone = phone.replace(/\D/g, "");
 
-  const customerOrders = searched
-    ? orders.filter(
-        (order) => order.phone.replace(/\s/g, "") === normalizedPhone,
-      )
+  const customerOrders = verifiedPhone
+    ? orders.filter((order) => order.phone.replace(/\D/g, "") === verifiedPhone)
     : [];
-
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSearched(true);
-  };
 
+    if (!/^0[0-9]{9}$/.test(normalizedPhone)) {
+      setError("Số điện thoại không hợp lệ.");
+      return;
+    }
+
+    setVerifiedPhone("");
+    setOtpRequested(true);
+    setError("");
+  };
   return (
     <section className="feature-page">
       <div className="page-kicker">
@@ -342,8 +355,11 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
             value={phone}
             onChange={(event) => {
               setPhone(event.target.value);
-              setSearched(false);
+
+              setOtpRequested(false);
+              setVerifiedPhone("");
               setSelectedOrderId(null);
+              setError("");
             }}
             type="tel"
             pattern="0[0-9]{9}"
@@ -357,13 +373,29 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
         </button>
       </form>
 
-      {searched && (
+      {otpRequested && (
+        <MockOtpStep
+          onVerified={() => {
+            setVerifiedPhone(normalizedPhone);
+            setOtpRequested(false);
+            setError("");
+          }}
+          onBack={() => {
+            setOtpRequested(false);
+            setVerifiedPhone("");
+          }}
+        />
+      )}
+
+      {error && <p className="form-feedback">{error}</p>}
+
+      {verifiedPhone && (
         <div className="feature-card">
+          {" "}
           <div className="feature-heading-row">
             <h2>Đơn hàng của bạn</h2>
             <span>{customerOrders.length} đơn hàng</span>
           </div>
-
           {customerOrders.length === 0 ? (
             <div className="feature-empty">
               <h3>Chưa tìm thấy đơn hàng</h3>
@@ -617,9 +649,16 @@ export function ComplaintPage({
   const [category, setCategory] = useState("Giao thiếu sản phẩm");
   const [description, setDescription] = useState("");
   const [message, setMessage] = useState("");
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!otpVerified) {
+      setOtpRequested(true);
+      setMessage("Vui lòng xác thực OTP trước khi gửi khiếu nại.");
+      return;
+    }
 
     const normalizedCode = orderCode.trim().toUpperCase();
     const normalizedPhone = phone.replace(/\s/g, "");
@@ -684,7 +723,12 @@ export function ComplaintPage({
           Số điện thoại đặt hàng
           <input
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={(event) => {
+              setPhone(event.target.value);
+              setOtpVerified(false);
+              setOtpRequested(false);
+              setMessage("");
+            }}
             type="tel"
             pattern="0[0-9]{9}"
             placeholder="09xxxxxxxx"
@@ -726,6 +770,19 @@ export function ComplaintPage({
 
         {message && <p className="form-feedback">{message}</p>}
       </form>
+      {otpRequested && (
+        <MockOtpStep
+          onVerified={() => {
+            setOtpVerified(true);
+            setOtpRequested(false);
+            setMessage("Số điện thoại đã được xác thực.");
+          }}
+          onBack={() => {
+            setOtpRequested(false);
+            setOtpVerified(false);
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -753,34 +810,48 @@ export function OrderTrackingPage({
     useState<OrderActionRequest["type"]>("CANCEL");
 
   const [reason, setReason] = useState("");
-
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState("");
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    const normalizedPhone = phone.replace(/\D/g, "");
+
+    if (!/^0[0-9]{9}$/.test(normalizedPhone)) {
+      setError("Số điện thoại không hợp lệ.");
+      return;
+    }
+
+    setSearchedOrderId(null);
+    setVerifiedPhone("");
+    setOtpRequested(true);
+    setError("");
+  };
+
+  const handleOtpVerified = () => {
     const normalizedCode = orderCode.trim().toUpperCase();
-    const normalizedPhone = phone.replace(/\s/g, "");
+    const normalizedPhone = phone.replace(/\D/g, "");
 
     const foundOrder = orders.find(
       (order) =>
         order.id.toUpperCase() === normalizedCode &&
-        order.phone.replace(/\s/g, "") === normalizedPhone,
+        order.phone.replace(/\D/g, "") === normalizedPhone,
     );
+
+    setOtpRequested(false);
+    setVerifiedPhone(normalizedPhone);
 
     if (!foundOrder) {
       setSearchedOrderId(null);
-
       setError(
-        "Không tìm thấy đơn hàng. Vui lòng kiểm tra mã đơn và số điện thoại.",
+        "Không tìm thấy đơn hàng tương ứng với mã đơn và số điện thoại.",
       );
-
       return;
     }
 
-    // Chỉ lưu ID đơn hàng.
     setSearchedOrderId(foundOrder.id);
-
-    setError("");
     setReason("");
+    setError("");
   };
 
   const hasPendingRequest =
@@ -868,6 +939,8 @@ export function OrderTrackingPage({
             onChange={(event) => {
               setOrderCode(event.target.value);
               setSearchedOrderId(null);
+              setOtpRequested(false);
+              setVerifiedPhone("");
               setError("");
             }}
             placeholder="Ví dụ: IV-12345678"
@@ -882,6 +955,8 @@ export function OrderTrackingPage({
             onChange={(event) => {
               setPhone(event.target.value);
               setSearchedOrderId(null);
+              setOtpRequested(false);
+              setVerifiedPhone("");
               setError("");
             }}
             placeholder="09xxxxxxxx"
@@ -897,6 +972,16 @@ export function OrderTrackingPage({
 
         {error && <p className="form-feedback">{error}</p>}
       </form>
+
+      {otpRequested && (
+        <MockOtpStep
+          onVerified={handleOtpVerified}
+          onBack={() => {
+            setOtpRequested(false);
+            setVerifiedPhone("");
+          }}
+        />
+      )}
 
       {searchedOrder && (
         <div className="feature-card order-detail-card">

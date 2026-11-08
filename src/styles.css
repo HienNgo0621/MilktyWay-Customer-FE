@@ -3841,7 +3841,7 @@ body {
 .feature-search-form label,
 .feature-action-form label {
   font-size: 11px; /* Giảm từ 12px/mặc định xuống 11px */
-  color: #4f6053;  /* Đồng bộ màu chữ muted giống form checkout */
+  color: #4f6053; /* Đồng bộ màu chữ muted giống form checkout */
 }
 
 /* 2. Sửa lỗi chữ quá to trong ô nhập liệu (Input) trên Mobile */
@@ -3858,17 +3858,17 @@ body {
 }
 
 /* 3. Thu nhỏ chữ trong các thẻ thông tin chi tiết đơn hàng (Info Grid) */
-.feature-info-grid > div, 
+.feature-info-grid > div,
 .member-stat-grid > div {
   padding: 10px 12px;
 }
 
-.feature-info-grid small, 
+.feature-info-grid small,
 .member-stat-grid small {
   font-size: 9px; /* Thu nhỏ chữ chú thích */
 }
 
-.feature-info-grid b, 
+.feature-info-grid b,
 .member-stat-grid strong {
   font-size: 11px; /* Thu nhỏ chữ giá trị hiển thị chính */
 }
@@ -3884,7 +3884,7 @@ body {
 ========================================================= */
 
 /* 1. Thu nhỏ phần tiêu đề mã đơn hàng và ngày đặt */
-.order-modal-header h2, 
+.order-modal-header h2,
 .feature-heading-row h2 {
   font-size: 16px !important; /* Hạ từ 21px xuống 16px cho vừa vặn */
   letter-spacing: -0.5px;
@@ -3930,7 +3930,10 @@ body {
 /* 4. Tối ưu giao diện lưới thông tin trên Mobile để không bị thô */
 @media (max-width: 640px) {
   .feature-info-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important; /* Giữ hiển thị 2 cột thay vì bị tràn thành 1 cột quá to */
+    grid-template-columns: repeat(
+      2,
+      minmax(0, 1fr)
+    ) !important; /* Giữ hiển thị 2 cột thay vì bị tràn thành 1 cột quá to */
     gap: 8px !important;
   }
 }
@@ -4014,4 +4017,616 @@ body {
   width: 8px !important;
   height: 8px !important;
   margin-top: 4px !important;
+}
+
+/* =========================================
+   MILKTYWAY FOOTER - MDBOOTSTRAP STYLE
+========================================= */
+
+.mw-footer {
+  width: 100%;
+  margin-top: 65px;
+  color: #f5f6fa;
+}
+
+/* Tầng 1: Social */
+.mw-footer-social {
+  background: #2e6442;
+  color: #ffffff;
+}
+
+.mw-footer-container {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding-left: 42px;
+  padding-right: 42px;
+}
+
+.mw-footer-social-inner {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.mw-footer-social-inner > span {
+  font-size: 11px;
+}
+
+.mw-social-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.mw-social-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 13px;
+  transition: opacity 0.2s;
+}
+
+.mw-social-links a:hover {
+  opacity: 0.65;
+}
+
+/* Tầng 2: 4 cột */
+.mw-footer-main {
+  background: #1e2534;
+}
+
+.mw-footer-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 34px;
+  padding-top: 30px;
+  padding-bottom: 30px;
+}
+
+.mw-footer-columns section {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.mw-footer-columns h3 {
+  margin: 0 0 9px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mw-footer-columns p,
+.mw-footer-columns a {
+  margin: 0;
+  color: #e1e4ec;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.mw-footer-columns a:hover {
+  color: #a99aff;
+}
+
+.mw-footer-columns section:first-child p {
+  max-width: 260px;
+}
+
+.mw-footer-columns section:last-child p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.mw-footer-columns section:last-child svg {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+
+/* Tầng 3: Copyright */
+.mw-footer-bottom {
+  min-height: 45px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  background: #151c2a;
+  color: #f3f4f7;
+  text-align: center;
+  font-size: 11px;
+}
+
+.mw-footer-bottom a {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .mw-footer-container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .mw-footer-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mw-footer-social-inner {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mw-social-links {
+    gap: 21px;
+  }
+
+  .mw-footer-columns {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+
+  .mw-footer-container {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+/* =========================================
+   1. PAYMENT QR MODAL
+========================================= */
+
+.payment-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 16px;
+
+  background: rgba(20, 30, 23, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.payment-modal {
+  width: min(100%, 440px);
+  max-height: 90vh;
+  overflow-y: auto;
+
+  padding: 25px;
+
+  background: #ffffff;
+  border: 1px solid #e4e9e1;
+  border-radius: 18px;
+
+  box-shadow: 0 24px 80px rgba(15, 30, 20, 0.25);
+
+  display: grid;
+  justify-items: center;
+  gap: 13px;
+
+  text-align: center;
+}
+
+.payment-modal h2 {
+  margin: 0;
+  color: #26372f;
+  font-size: 20px;
+}
+
+.payment-modal > p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #758176;
+}
+
+.payment-modal-description {
+  max-width: 320px;
+}
+
+.payment-qr {
+  padding: 13px;
+  margin: 5px 0;
+
+  background: #ffffff;
+  border: 1px solid #e4e9e1;
+  border-radius: 12px;
+}
+
+.payment-countdown {
+  display: grid;
+  gap: 5px;
+
+  width: 100%;
+  padding: 13px;
+
+  background: #fff8e9;
+  border: 1px solid #f0dfb8;
+  border-radius: 12px;
+
+  color: #8a6a31;
+  font-size: 11px;
+}
+
+.payment-countdown strong {
+  color: #a45a23;
+  font-size: 27px;
+  font-variant-numeric: tabular-nums;
+}
+
+.payment-demo-note {
+  color: #8b7953 !important;
+  font-size: 10px !important;
+}
+
+.payment-failed-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+  background: #fdebea;
+  color: #b52b25;
+
+  font-size: 27px;
+  font-weight: 800;
+}
+
+.payment-failed-title {
+  color: #b32620 !important;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.payment-failed-description {
+  color: #b32620 !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+/* =========================================
+   2. MEMBER CHECKOUT
+========================================= */
+
+.member-checkout-result {
+  display: grid;
+  gap: 6px;
+
+  margin: 10px 0;
+  padding: 14px;
+
+  background: #eff6ef;
+  border: 1px solid #dcebdd;
+  border-radius: 12px;
+}
+
+.member-checkout-result > b {
+  color: #2e6442;
+  font-size: 13px;
+}
+
+.member-checkout-result p {
+  margin: 0;
+  color: #718071;
+  font-size: 11px;
+}
+
+.points-redeem-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+
+  margin-top: 12px;
+  padding: 14px;
+
+  background: #f5f8ef;
+  border: 1px solid #e1e9d6;
+  border-radius: 12px;
+
+  color: #3e5742;
+}
+
+.points-redeem-option input {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  accent-color: var(--brand);
+}
+
+.points-redeem-option span {
+  display: grid;
+  gap: 5px;
+}
+
+.points-redeem-option b {
+  font-size: 12px;
+}
+
+.points-redeem-option small {
+  color: #7d8b7d;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* =========================================
+   3. OTP VERIFICATION
+========================================= */
+
+.otp-verification-card {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.otp-verification-card h2 {
+  margin: 0;
+  font-size: 19px;
+  color: #304638;
+}
+
+.otp-verification-card > p {
+  margin: 0;
+  font-size: 11px;
+  color: #7c887f;
+}
+
+.otp-demo-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 13px;
+
+  background: #eff5ed;
+  border: 1px dashed #9bb69b;
+  border-radius: 10px;
+
+  color: #607661;
+  font-size: 11px;
+}
+
+.otp-demo-code strong {
+  color: var(--brand);
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+
+.otp-verification-card label {
+  display: grid;
+  gap: 7px;
+
+  font-size: 11px;
+  font-weight: 600;
+  color: #46574a;
+}
+
+.otp-verification-card input {
+  width: 100%;
+  min-height: 45px;
+  padding: 10px 12px;
+
+  border: 1px solid var(--line);
+  border-radius: 10px;
+
+  background: #fcfdfb;
+  font: inherit;
+}
+
+/* =========================================
+   4. MEMBER POINT HISTORY
+========================================= */
+
+.member-points-card {
+  background: linear-gradient(135deg, #edf4e8, #ffffff);
+}
+
+.member-points-card h2 {
+  margin: 10px 0 5px;
+  color: #2f5138;
+}
+
+.point-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+
+  padding: 15px 0;
+  border-bottom: 1px solid #edf0ed;
+}
+
+.point-history-item:last-child {
+  border-bottom: 0;
+}
+
+.point-history-item > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.point-history-item b {
+  font-size: 12px;
+  color: #34453a;
+}
+
+.point-history-item small {
+  color: #849087;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.point-history-item > strong {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.point-positive {
+  color: #39845a;
+}
+
+.point-negative {
+  color: #b84c43;
+}
+
+/* =========================================
+   5. FAQ ACCORDION
+========================================= */
+
+.faq-list {
+  display: grid;
+  gap: 11px;
+}
+
+.faq-item {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e4e9e1;
+  border-radius: 13px;
+
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.faq-item.is-open {
+  border-color: #b9cfba;
+  box-shadow: 0 8px 22px rgba(40, 90, 55, 0.06);
+}
+
+.faq-question {
+  width: 100%;
+  min-height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+
+  padding: 15px 18px;
+
+  border: 0;
+  background: #ffffff;
+
+  color: #34483a;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.faq-chevron {
+  flex-shrink: 0;
+  color: var(--brand);
+  transition: transform 0.25s ease;
+}
+
+.faq-item.is-open .faq-chevron {
+  transform: rotate(180deg);
+}
+
+.faq-answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s ease;
+}
+
+.faq-answer.is-open {
+  grid-template-rows: 1fr;
+}
+
+.faq-answer-inner {
+  overflow: hidden;
+}
+
+.faq-answer-inner p {
+  margin: 0;
+  padding: 0 18px;
+
+  color: #77837a;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.faq-answer.is-open .faq-answer-inner p {
+  padding-top: 2px;
+  padding-bottom: 17px;
+}
+
+.faq-support {
+  margin-top: 28px;
+}
+
+.faq-support h2 {
+  margin-top: 0;
+  color: #304638;
+}
+
+.faq-support > p {
+  color: #77837a;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.faq-support-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* =========================================
+   6. MOBILE
+========================================= */
+
+@media (max-width: 640px) {
+  .payment-modal {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+
+  .payment-modal .btn {
+    width: 100%;
+  }
+
+  .faq-question {
+    min-height: 54px;
+    padding: 13px;
+    font-size: 12px;
+  }
+
+  .faq-answer-inner p {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  .faq-support-actions {
+    flex-direction: column;
+  }
+
+  .faq-support-actions .btn {
+    width: 100%;
+  }
+
+  .otp-demo-code {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

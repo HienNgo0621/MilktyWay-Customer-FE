@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import PaymentQrModal, { type PaymentSession } from "./PaymentQrModal";
 import {
   Link,
   NavLink,
@@ -8,6 +9,14 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import {
+  FaFacebookF,
+  FaTwitter,
+  FaGoogle,
+  FaInstagram,
+  FaLinkedinIn,
+  FaGithub,
+} from "react-icons/fa";
 import {
   ArrowLeft,
   ArrowRight,
@@ -35,6 +44,9 @@ import {
   Truck,
   UserRound,
   X,
+  Mail,
+  Phone,
+  Printer,
 } from "lucide-react";
 import {
   availableAt,
@@ -42,6 +54,9 @@ import {
   categoryLabels,
   money,
   products,
+  demoMembers,
+  memberTierLabels,
+  type MemberPointTransaction,
   type Branch,
   type CartItem,
   type Category,
@@ -53,6 +68,8 @@ import {
   type PaymentMethod,
   type MemberProfile,
 } from "./data";
+import MemberPointsPage from "./MemberPointsPage";
+import FAQsPage from "./FAQs";
 import {
   ORDER_STORAGE_KEY,
   loadOrders,
@@ -70,6 +87,8 @@ type Totals = {
   loyalty: number;
   discount: number;
   shipping: number;
+  pointsUsed: number;
+  pointsDiscount: number;
   total: number;
 };
 const readStore = <T,>(key: string, fallback: T): T => {
@@ -82,25 +101,49 @@ const readStore = <T,>(key: string, fallback: T): T => {
 };
 const getTotals = (
   items: CartItem[],
-  member: boolean,
+  member: MemberProfile | null,
   code: string,
+  usePoints: boolean,
 ): Totals => {
   const subtotal = items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
     0,
   );
-  const loyalty = member ? Math.floor(subtotal * 0.1) : 0;
+
+  // Hội viên hợp lệ được giảm cố định 3.000đ.
+  const loyalty = member ? Math.min(3000, subtotal) : 0;
+
   const discount =
     code === "CHAO10" && subtotal >= 100000
       ? Math.min(30000, Math.floor((subtotal - loyalty) * 0.1))
       : 0;
+
   const shipping = subtotal === 0 || subtotal >= 150000 ? 0 : 15000;
+
+  const totalBeforePoints = Math.max(
+    0,
+    subtotal - loyalty - discount + shipping,
+  );
+
+  // 1 điểm = 1.000đ.
+  // Không cho dùng nhiều điểm hơn số dư hoặc số tiền cần trả.
+  const pointsUsed =
+    member && usePoints
+      ? Math.min(member.points, Math.floor(totalBeforePoints / 1000))
+      : 0;
+
+  const pointsDiscount = pointsUsed * 1000;
+
+  const total = Math.max(0, totalBeforePoints - pointsDiscount);
+
   return {
     subtotal,
     loyalty,
     discount,
+    pointsUsed,
+    pointsDiscount,
     shipping,
-    total: subtotal - loyalty - discount + shipping,
+    total,
   };
 };
 const uid = () =>
@@ -125,6 +168,25 @@ function App() {
   const [memberProfile, setMemberProfile] = useState<MemberProfile | null>(() =>
     loadMemberProfile(),
   );
+  const [members, setMembers] = useState<MemberProfile[]>(() => {
+    const savedMembers = readStore<MemberProfile[]>(
+      "MilktyWay-members",
+      demoMembers,
+    );
+
+    const savedProfile = loadMemberProfile();
+
+    if (
+      savedProfile &&
+      !savedMembers.some((member) => member.phone === savedProfile.phone)
+    ) {
+      return [...savedMembers, savedProfile];
+    }
+
+    return savedMembers;
+  });
+
+  const [usePoints, setUsePoints] = useState(false);
   const [cart, setCart] = useState<CartItem[]>(() =>
     readStore("MilktyWay-cart", []),
   );
@@ -180,6 +242,9 @@ function App() {
     readStore("MilktyWay-member-phone", ""),
   );
   useEffect(() => {
+    localStorage.setItem("MilktyWay-members", JSON.stringify(members));
+  }, [members]);
+  useEffect(() => {
     localStorage.setItem("MilktyWay-member-phone", JSON.stringify(memberPhone));
   }, [memberPhone]);
   const [couponCode, setCouponCode] = useState("");
@@ -189,6 +254,16 @@ function App() {
   const [branchOpen, setBranchOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("COD");
+  // Phiên thanh toán QR hiện tại
+  const [paymentSession, setPaymentSession] = useState<PaymentSession | null>(
+    null,
+  );
+
+  // ID đơn hàng đang chờ thử lại.
+  // Dùng để không tạo đơn hàng trùng khi khách retry.
+  const [retryPaymentOrderId, setRetryPaymentOrderId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     localStorage.setItem("MilktyWay-branch", JSON.stringify(branch));
@@ -268,13 +343,19 @@ function App() {
     (sum, item) => sum + item.quantity,
     0,
   );
-  const normalizedMemberPhone = memberPhone.replace(/\s/g, "");
+  const normalizedMemberPhone = memberPhone.replace(/\D/g, "");
 
-  const member =
-    normalizedMemberPhone === "0900000001" ||
-    memberProfile?.phone === normalizedMemberPhone;
-  const totals = getTotals(selectedItems, !!member, couponCode);
+  const matchedMember =
+    members.find(
+      (item) => item.phone.replace(/\D/g, "") === normalizedMemberPhone,
+    ) ?? null;
 
+  const totals = getTotals(selectedItems, matchedMember, couponCode, usePoints);
+  useEffect(() => {
+    if (!matchedMember) {
+      setUsePoints(false);
+    }
+  }, [matchedMember?.phone]);
   const openProduct = (product: Product) => {
     if (!branch) {
       setToast("Vui lòng chọn chi nhánh trước khi chọn món.");
@@ -401,6 +482,24 @@ function App() {
       );
     }
   };
+  const finishCheckout = (order: Order) => {
+    // Chỉ xóa sản phẩm sau khi đặt COD
+    // hoặc thanh toán online thành công.
+    setCart((items) => items.filter((item) => !item.selected));
+
+    setLastOrder(order);
+
+    setCouponCode("");
+    setCouponInput("");
+    setCouponMessage("");
+
+    setPaymentMethod("COD");
+    setPaymentSession(null);
+    setRetryPaymentOrderId(null);
+
+    navigate("/confirmation");
+  };
+
   const submitOrder = (form: HTMLFormElement) => {
     try {
       if (!branch || !selectedItems.length) {
@@ -417,23 +516,79 @@ function App() {
         BANK_TRANSFER: "Chuyển khoản ngân hàng (demo)",
       };
 
-      const next: Order = {
-        id: `IV-${Date.now().toString().slice(-8)}`,
-        createdAt: now,
+      const orderValues = {
         name: String(data.get("name") || "").trim(),
         phone: String(data.get("phone") || "").trim(),
         address: String(data.get("address") || "").trim(),
         note: String(data.get("note") || "").trim(),
+
         branchName: branch.name,
+
         items: selectedItems.map((item) => ({ ...item })),
+
         subtotal: totals.subtotal,
-        discount: totals.loyalty + totals.discount,
+
+        discount: totals.loyalty + totals.discount + totals.pointsDiscount,
+
         shipping: totals.shipping,
         total: totals.total,
+
         payment: paymentNames[paymentMethod],
-        status: "PENDING_CONFIRMATION",
         paymentMethod,
+
+        memberPhone: matchedMember?.phone,
+        pointsUsed: totals.pointsUsed,
+      };
+
+      // ==========================================
+      // TRƯỜNG HỢP 1: THỬ LẠI ĐƠN ĐÃ TẠO
+      // ==========================================
+
+      if (retryPaymentOrderId) {
+        const updatedOrder = updateOrder(
+          retryPaymentOrderId,
+          (currentOrder) => ({
+            ...currentOrder,
+            ...orderValues,
+
+            paymentStatus: paymentMethod === "COD" ? "UNPAID" : "PENDING",
+          }),
+        );
+
+        if (!updatedOrder) {
+          setToast("Không tìm thấy đơn hàng cần thử lại.");
+          return;
+        }
+
+        if (paymentMethod === "COD") {
+          finishCheckout(updatedOrder);
+          return;
+        }
+
+        setPaymentSession({
+          orderId: updatedOrder.id,
+          expiresAt: Date.now() + 5 * 60 * 1000,
+          status: "PENDING",
+        });
+
+        setToast("Đã tạo lại phiên thanh toán.");
+        return;
+      }
+
+      // ==========================================
+      // TRƯỜNG HỢP 2: TẠO ĐƠN HÀNG MỚI
+      // ==========================================
+
+      const next: Order = {
+        id: `IV-${Date.now().toString().slice(-8)}`,
+        createdAt: now,
+
+        ...orderValues,
+
+        status: "PENDING_CONFIRMATION",
+
         paymentStatus: paymentMethod === "COD" ? "UNPAID" : "PENDING",
+
         statusHistory: [
           {
             status: "PENDING_CONFIRMATION",
@@ -441,24 +596,91 @@ function App() {
             note: "Đơn hàng đã được tạo.",
           },
         ],
+
         actionRequests: [],
         complaints: [],
       };
 
       replaceOrders([next, ...ordersRef.current]);
-      setLastOrder(next);
-      setCart((items) => items.filter((item) => !item.selected));
 
-      setCouponCode("");
-      setCouponInput("");
-      setCouponMessage("");
-      setPaymentMethod("COD");
+      // COD: hoàn tất bước đặt hàng.
+      if (paymentMethod === "COD") {
+        finishCheckout(next);
+        return;
+      }
 
-      navigate("/confirmation");
+      // Online: chưa xóa giỏ, chưa mở hóa đơn.
+      setLastOrder(null);
+
+      setRetryPaymentOrderId(next.id);
+
+      setPaymentSession({
+        orderId: next.id,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        status: "PENDING",
+      });
+
+      setToast("Vui lòng hoàn tất thanh toán trong vòng 5 phút.");
     } catch (error) {
       console.error("Lỗi khi tạo đơn hàng:", error);
       setToast("Không thể tạo đơn hàng. Vui lòng thử lại.");
     }
+  };
+
+  // Giao dịch hết hạn hoặc khách chủ động hủy.
+  const failQrPayment = (orderId: string, reason: string) => {
+    const updatedOrder = updateOrder(orderId, (currentOrder) => ({
+      ...currentOrder,
+      paymentStatus: "FAILED",
+    }));
+
+    if (!updatedOrder) return;
+
+    setPaymentSession({
+      orderId,
+      expiresAt: 0,
+      status: "FAILED",
+      failureReason: reason,
+    });
+
+    setRetryPaymentOrderId(orderId);
+
+    setToast("Thanh toán thất bại. Bạn có thể thử lại.");
+  };
+
+  // Khách bấm thử lại trong Modal.
+  const retryQrPayment = (orderId: string) => {
+    const updatedOrder = updateOrder(orderId, (currentOrder) => ({
+      ...currentOrder,
+      paymentStatus: "PENDING",
+    }));
+
+    if (!updatedOrder) return;
+
+    setRetryPaymentOrderId(orderId);
+
+    setPaymentSession({
+      orderId,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+      status: "PENDING",
+    });
+  };
+
+  // Chỉ mô phỏng thành công khi khách bấm nút này.
+  const completeQrPayment = (orderId: string) => {
+    const updatedOrder = updateOrder(orderId, (currentOrder) => ({
+      ...currentOrder,
+      paymentStatus: "PAID",
+    }));
+
+    if (!updatedOrder) {
+      setToast("Không tìm thấy đơn hàng.");
+      return;
+    }
+
+    setToast("Thanh toán mô phỏng thành công.");
+
+    finishCheckout(updatedOrder);
   };
 
   const mockPaymentResult = (orderId: string, result: "PAID" | "FAILED") => {
@@ -508,6 +730,26 @@ function App() {
       if (!canRequest) {
         setToast("Đơn hàng đã quá thời hạn đổi hoặc hủy.");
         return null;
+      }
+
+      if (type === "CANCEL") {
+        const createdTime = new Date(targetOrder.createdAt).getTime();
+
+        const elapsed = Date.now() - createdTime;
+
+        const fiveMinutes = 5 * 60 * 1000;
+
+        if (
+          !Number.isFinite(createdTime) ||
+          elapsed < 0 ||
+          elapsed > fiveMinutes
+        ) {
+          setToast(
+            "Yêu cầu hủy chỉ được gửi trong vòng 5 phút kể từ khi đặt hàng.",
+          );
+
+          return null;
+        }
       }
 
       // Không cho gửi nhiều yêu cầu khi yêu cầu trước
@@ -571,6 +813,69 @@ function App() {
 
       return null;
     }
+  };
+
+  const settleMemberPoints = (order: Order) => {
+    if (!order.memberPhone) return;
+
+    const phone = order.memberPhone.replace(/\D/g, "");
+
+    // Tạm quy định: 10.000đ giá trị đơn hàng = 1 điểm.
+    // Có thể điều chỉnh theo chính sách của MilktyWay.
+    const pointsEarned = Math.floor(order.total / 10000);
+
+    const pointsUsed = order.pointsUsed ?? 0;
+
+    setMembers((currentMembers) =>
+      currentMembers.map((member) => {
+        if (member.phone.replace(/\D/g, "") !== phone) {
+          return member;
+        }
+
+        const history = member.pointHistory ?? [];
+
+        // Chống cộng/trừ điểm hai lần cho cùng đơn hàng.
+        const alreadySettled = history.some(
+          (item) => item.orderId === order.id,
+        );
+
+        if (alreadySettled) {
+          return member;
+        }
+
+        const transactions: MemberPointTransaction[] = [];
+
+        if (pointsUsed > 0) {
+          transactions.push({
+            id: uid(),
+            createdAt: new Date().toISOString(),
+            type: "REDEEM",
+            points: -pointsUsed,
+            description: `Đổi điểm cho đơn ${order.id}`,
+            orderId: order.id,
+          });
+        }
+
+        if (pointsEarned > 0) {
+          transactions.push({
+            id: uid(),
+            createdAt: new Date().toISOString(),
+            type: "EARN",
+            points: pointsEarned,
+            description: `Tích điểm từ đơn ${order.id}`,
+            orderId: order.id,
+          });
+        }
+
+        return {
+          ...member,
+
+          points: Math.max(0, member.points - pointsUsed + pointsEarned),
+
+          pointHistory: [...transactions, ...history],
+        };
+      }),
+    );
   };
 
   const advanceOrderStatus = (orderId: string): Order | null => {
@@ -654,6 +959,10 @@ function App() {
         return null;
       }
 
+      if (nextStatus === "COMPLETED") {
+        settleMemberPoints(updatedOrder);
+      }
+
       setToast(
         `Đã chuyển trạng thái: ${
           statusNotes[nextStatus] ?? "Trạng thái đơn hàng đã được cập nhật."
@@ -672,8 +981,36 @@ function App() {
 
   const saveMember = (profile: MemberProfile) => {
     try {
-      setMemberProfile(profile);
-      setMemberPhone(profile.phone);
+      const normalizedPhone = profile.phone.replace(/\D/g, "");
+
+      const nextProfile = {
+        ...profile,
+        phone: normalizedPhone,
+        pointHistory: profile.pointHistory ?? [],
+      };
+
+      setMembers((currentMembers) => {
+        const exists = currentMembers.some(
+          (member) => member.phone === normalizedPhone,
+        );
+
+        if (exists) {
+          return currentMembers.map((member) =>
+            member.phone === normalizedPhone
+              ? {
+                  ...member,
+                  ...nextProfile,
+                }
+              : member,
+          );
+        }
+
+        return [...currentMembers, nextProfile];
+      });
+
+      setMemberProfile(nextProfile);
+      setMemberPhone(normalizedPhone);
+
       setToast("Đã lưu thông tin hội viên.");
     } catch (error) {
       console.error("Lỗi cập nhật hồ sơ thành viên:", error);
@@ -717,6 +1054,10 @@ function App() {
       return false;
     }
   };
+
+  const qrOrder = paymentSession
+    ? (orders.find((order) => order.id === paymentSession.orderId) ?? null)
+    : null;
 
   return (
     <div className="app-shell">
@@ -779,6 +1120,7 @@ function App() {
               />
             }
           />
+
           <Route
             path="/checkout"
             element={
@@ -789,6 +1131,9 @@ function App() {
                 totals={totals}
                 memberPhone={memberPhone}
                 onMemberPhone={setMemberPhone}
+                matchedMember={matchedMember}
+                usePoints={usePoints}
+                onUsePoints={setUsePoints}
                 paymentMethod={paymentMethod}
                 onPaymentMethod={setPaymentMethod}
                 onSubmit={submitOrder}
@@ -800,12 +1145,13 @@ function App() {
             path="/confirmation"
             element={
               <ConfirmationPage
-                order={lastOrder ?? orders[0] ?? null}
+                order={lastOrder}
                 onShop={() => navigate("/menu")}
-                onMockPaymentResult={mockPaymentResult}
+                onBackToCheckout={() => navigate("/checkout")}
               />
             }
           />
+          <Route path="/faqs" element={<FAQsPage />} />
           <Route
             path="/track"
             element={
@@ -827,6 +1173,10 @@ function App() {
           <Route
             path="/orders"
             element={<OrderHistoryPage orders={orders} />}
+          />
+          <Route
+            path="/member-points"
+            element={<MemberPointsPage members={members} />}
           />
           <Route path="*" element={<NotFound />} />
 
@@ -866,6 +1216,31 @@ function App() {
           <Check size={16} />
           {toast}
         </div>
+      )}
+      {paymentSession && qrOrder && (
+        <PaymentQrModal
+          key={`${paymentSession.orderId}-${paymentSession.expiresAt}`}
+          order={qrOrder}
+          session={paymentSession}
+          onExpired={() =>
+            failQrPayment(
+              paymentSession.orderId,
+              "Đã hết thời gian thanh toán 5 phút.",
+            )
+          }
+          onCancel={() =>
+            failQrPayment(
+              paymentSession.orderId,
+              "Bạn đã hủy giao dịch thanh toán.",
+            )
+          }
+          onSuccess={() => completeQrPayment(paymentSession.orderId)}
+          onRetry={() => retryQrPayment(paymentSession.orderId)}
+          onChooseOtherMethod={() => {
+            setRetryPaymentOrderId(paymentSession.orderId);
+            setPaymentSession(null);
+          }}
+        />
       )}
     </div>
   );
@@ -951,37 +1326,135 @@ function BottomNav({ count }: { count: number }) {
 
 function Footer() {
   return (
-    <footer className="site-footer">
-      <div className="footer-inner">
-        <div>
-          <Link to="/" className="brand-lockup footer-brand">
-            <span className="brand-mark">i</span>
-            <span>
-              <b>MilktyWay</b>
-              <small>TEA & MOMENTS</small>
-            </span>
-          </Link>
-          <p>Trà ngon cho những khoảnh khắc thường ngày.</p>
+    <footer className="mw-footer">
+      {/* Tầng 1: Social networks */}
+      <div className="mw-footer-social">
+        <div className="mw-footer-container mw-footer-social-inner">
+          <span>Get connected with us on social networks:</span>
+
+          <div className="mw-social-links">
+            <a
+              href="https://www.facebook.com/"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Facebook"
+            >
+              <FaFacebookF />
+            </a>
+
+            <a
+              href="https://twitter.com/"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Twitter"
+            >
+              <FaTwitter />
+            </a>
+
+            <a
+              href="https://google.com/"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Google"
+            >
+              <FaGoogle />
+            </a>
+
+            <a
+              href="https://www.instagram.com/"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Instagram"
+            >
+              <FaInstagram />
+            </a>
+
+            <a
+              href="https://www.linkedin.com/"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="LinkedIn"
+            >
+              <FaLinkedinIn />
+            </a>
+
+            <a
+              href="https://github.com/"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="GitHub"
+            >
+              <FaGithub />
+            </a>
+          </div>
         </div>
-        <div className="footer-links">
-          <Link to="/menu">Thực đơn</Link>
-          <Link to="/orders">Lịch sử mua hàng</Link>
-          <Link to="/track">Tra cứu đơn hàng</Link>
-          <Link to="/cart">Giỏ hàng</Link>
-          <button
-            className="footer-member-link"
-            onClick={() =>
-              document
-                .querySelector<HTMLInputElement>('[name="memberPhone"]')
-                ?.focus()
-            }
-          >
-            Ưu đãi hội viên
-          </button>
+      </div>
+
+      {/* Tầng 2: 4 cột nội dung */}
+      <div className="mw-footer-main">
+        <div className="mw-footer-container mw-footer-columns">
+          {/* Cột 1 */}
+          <section>
+            <h3>COMPANY NAME</h3>
+
+            <p>
+              MilktyWay mang đến những thức uống thơm ngon, được pha chế theo sở
+              thích của từng khách hàng. Chúng tôi mong muốn mỗi ly trà là một
+              khoảnh khắc thư giãn và vui vẻ trong ngày.
+            </p>
+          </section>
+
+          {/* Cột 2 */}
+          <section>
+            <h3>PRODUCTS</h3>
+
+            <Link to="/menu">Trà sữa</Link>
+            <Link to="/menu">Trà trái cây</Link>
+            <Link to="/menu">Thức uống theo mùa</Link>
+            <Link to="/menu">Combo</Link>
+          </section>
+
+          {/* Cột 3 */}
+          <section>
+            <h3>USEFUL LINKS</h3>
+
+            <Link to="/membership">Your Account</Link>
+            <Link to="/orders">Lịch sử mua hàng</Link>
+            <Link to="/member-points">Điểm thưởng hội viên</Link>
+            <Link to="/faqs">Help / FAQs</Link>
+          </section>
+
+          {/* Cột 4 */}
+          <section>
+            <h3>CONTACT</h3>
+
+            <p>
+              <MapPin size={14} />
+              MilktyWay, TP. Hồ Chí Minh
+            </p>
+
+            <p>
+              <Mail size={14} />
+              support@milktyway.example
+            </p>
+
+            <p>
+              <Phone size={14} />
+              028 0000 0000
+            </p>
+
+            <p>
+              <Printer size={14} />
+              028 0000 0001
+            </p>
+          </section>
         </div>
-        <small className="demo-note">
-          Frontend demo · Chưa kết nối hệ thống đặt hàng thực tế
-        </small>
+      </div>
+
+      {/* Tầng 3: Copyright */}
+      <div className="mw-footer-bottom">
+        © 2026 Copyright:
+        <Link to="/"> MilktyWay.com</Link>
       </div>
     </footer>
   );
@@ -1658,7 +2131,7 @@ function OrderSummary({
       </div>
       {totals.loyalty > 0 && (
         <div className="summary-line discount">
-          <span>Ưu đãi hội viên · 10%</span>
+          <span>Ưu đãi hội viên</span>
           <b>−{money(totals.loyalty)}</b>
         </div>
       )}
@@ -1666,6 +2139,13 @@ function OrderSummary({
         <div className="summary-line discount">
           <span>Ưu đãi CHAO10</span>
           <b>−{money(totals.discount)}</b>
+        </div>
+      )}
+      {totals.pointsDiscount > 0 && (
+        <div className="summary-line discount">
+          <span>Đổi {totals.pointsUsed.toLocaleString("vi-VN")} điểm</span>
+
+          <b>−{money(totals.pointsDiscount)}</b>
         </div>
       )}
       <div className="summary-line">
@@ -1864,6 +2344,9 @@ function CheckoutPage({
   totals,
   memberPhone,
   onMemberPhone,
+  matchedMember,
+  usePoints,
+  onUsePoints,
   paymentMethod,
   onPaymentMethod,
   onSubmit,
@@ -1877,6 +2360,9 @@ function CheckoutPage({
   onMemberPhone: (value: string) => void;
   paymentMethod: PaymentMethod;
   onPaymentMethod: (value: PaymentMethod) => void;
+  matchedMember: MemberProfile | null;
+  usePoints: boolean;
+  onUsePoints: (value: boolean) => void;
   onSubmit: (form: HTMLFormElement) => void;
   onBack: () => void;
 }) {
@@ -1966,25 +2452,65 @@ function CheckoutPage({
               </div>
             </div>
             <label>
-              Mã / số điện thoại hội viên{" "}
+              Số điện thoại hội viên
               <span className="optional">Không bắt buộc</span>
               <input
                 name="memberPhone"
+                type="tel"
                 value={memberPhone}
-                onChange={(e) => onMemberPhone(e.target.value)}
-                placeholder="Nhập mã hoặc SĐT hội viên"
+                onChange={(event) => {
+                  onMemberPhone(event.target.value);
+                }}
+                placeholder="Nhập SĐT hội viên"
+                pattern="0[0-9]{9}"
+                maxLength={10}
                 autoComplete="off"
               />
             </label>
-            {memberPhone.replace(/\s/g, "") === "0900000001" ? (
-              <p className="success-message">
-                Hội viên VIP demo · Đang áp dụng giảm 10%.
-              </p>
-            ) : memberPhone ? (
+
+            {matchedMember ? (
+              <div className="member-checkout-result">
+                <b>{matchedMember.name}</b>
+
+                <p>Hạng: {memberTierLabels[matchedMember.tier]}</p>
+
+                <p>
+                  Điểm hiện có:{" "}
+                  <strong>
+                    {matchedMember.points.toLocaleString("vi-VN")}
+                  </strong>
+                </p>
+
+                <p className="success-message">
+                  Đã áp dụng giảm 3.000đ cho hội viên.
+                </p>
+              </div>
+            ) : memberPhone.trim() ? (
               <p className="form-feedback">
-                Chưa tìm thấy hội viên demo. Bạn vẫn có thể đặt hàng.
+                Không tìm thấy hội viên với số điện thoại này. Bạn vẫn có thể
+                đặt hàng mà không dùng ưu đãi hội viên.
               </p>
             ) : null}
+
+            {matchedMember && (
+              <label className="points-redeem-option">
+                <input
+                  type="checkbox"
+                  checked={usePoints}
+                  disabled={matchedMember.points <= 0}
+                  onChange={(event) => onUsePoints(event.target.checked)}
+                />
+
+                <span>
+                  <b>Dùng điểm thưởng để thanh toán</b>
+
+                  <small>
+                    {matchedMember.points.toLocaleString("vi-VN")} điểm hiện có.
+                    1 điểm = 1.000đ.
+                  </small>
+                </span>
+              </label>
+            )}
             <div className="checkout-branch">
               <MapPin size={19} />
               <div>
@@ -2070,11 +2596,11 @@ function CheckoutPage({
 function ConfirmationPage({
   order,
   onShop,
-  onMockPaymentResult,
+  onBackToCheckout,
 }: {
   order: Order | null;
   onShop: () => void;
-  onMockPaymentResult: (orderId: string, result: "PAID" | "FAILED") => void;
+  onBackToCheckout: () => void;
 }) {
   if (!order) {
     return (
@@ -2084,6 +2610,29 @@ function ConfirmationPage({
         <p>Chọn món để bắt đầu một đơn hàng mới.</p>
         <button className="btn btn-primary" onClick={onShop}>
           Khám phá thực đơn
+        </button>
+      </section>
+    );
+  }
+
+  const needsOnlinePayment =
+    order.paymentMethod === "MOMO" || order.paymentMethod === "BANK_TRANSFER";
+
+  if (needsOnlinePayment && order.paymentStatus !== "PAID") {
+    return (
+      <section className="checkout-empty">
+        <h1 className="payment-failed-title">Thanh toán chưa thành công</h1>
+
+        <p>Bạn cần hoàn tất thanh toán trước khi xem hóa đơn.</p>
+
+        {order.paymentStatus === "FAILED" && (
+          <p className="payment-failed-description">
+            Giao dịch đã thất bại hoặc bị hủy.
+          </p>
+        )}
+
+        <button className="btn btn-primary" onClick={onBackToCheckout}>
+          Thử lại / Chọn phương thức khác
         </button>
       </section>
     );
@@ -2099,7 +2648,11 @@ function ConfirmationPage({
       </div>
 
       <span className="eyebrow">THANK YOU FOR CHOOSING MilktyWay</span>
-      <h1>Đã tạo đơn demo!</h1>
+      <h1>
+        {order.paymentMethod === "COD"
+          ? "Đặt hàng thành công!"
+          : "Thanh toán thành công!"}
+      </h1>
 
       <p className="confirmation-lead">
         Thông tin đơn hàng đã được lưu trong trình duyệt hiện tại.
@@ -2177,38 +2730,6 @@ function ConfirmationPage({
           <span>Tổng thanh toán</span>
           <b>{money(order.total)}</b>
         </div>
-
-        {needsMockPayment && order.paymentStatus === "PENDING" && (
-          <div className="mock-payment-panel">
-            <h3>Thanh toán mô phỏng</h3>
-            <p>
-              Đây là giao dịch demo. Chưa có tiền được chuyển qua MoMo hoặc ngân
-              hàng.
-            </p>
-            <p>
-              Nội dung thanh toán: <b>{order.id}</b>
-            </p>
-            <p>
-              Số tiền: <b>{money(order.total)}</b>
-            </p>
-
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => onMockPaymentResult(order.id, "PAID")}
-            >
-              Mô phỏng thanh toán thành công
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-soft"
-              onClick={() => onMockPaymentResult(order.id, "FAILED")}
-            >
-              Mô phỏng thanh toán thất bại
-            </button>
-          </div>
-        )}
 
         <p className="demo-warning">
           Đơn hàng và thanh toán hiện chỉ được lưu, mô phỏng trên trình duyệt.

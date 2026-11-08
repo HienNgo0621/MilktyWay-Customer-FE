@@ -78,6 +78,22 @@ export type OrderComplaint = {
 
 export type MemberTier = "BRONZE" | "SILVER" | "GOLD" | "VIP";
 
+export type MemberPointTransaction = {
+  id: string;
+  createdAt: string;
+
+  // EARN: cộng điểm
+  // REDEEM: sử dụng điểm
+  // ADJUST: điều chỉnh điểm
+  type: "EARN" | "REDEEM" | "ADJUST";
+
+  // Điểm cộng là số dương, điểm trừ là số âm.
+  points: number;
+
+  description: string;
+  orderId?: string;
+};
+
 export type MemberProfile = {
   id: string;
   name: string;
@@ -87,6 +103,8 @@ export type MemberProfile = {
   tier: MemberTier;
   discountPercent: number;
   joinedAt: string;
+
+  pointHistory?: MemberPointTransaction[];
 };
 
 export type Promotion = {
@@ -94,7 +112,7 @@ export type Promotion = {
   name: string;
   description: string;
   code: string;
-  discountType: 'PERCENT' | 'FIXED';
+  discountType: "PERCENT" | "FIXED";
   discountValue: number;
   minimumOrder: number;
   maximumDiscount: number;
@@ -118,6 +136,8 @@ export type Order = {
   shipping: number;
   total: number;
   payment: string;
+  memberPhone?: string;
+  pointsUsed?: number;
 
   status: OrderStatus;
   paymentMethod: PaymentMethod;
@@ -338,51 +358,81 @@ export const availableAt = (branch: Branch | null, productId: number) => {
 
 export const demoPromotions: Promotion[] = [
   {
-    id: 'PROMO-001',
-    name: 'Chào bạn mới',
-    description: 'Giảm 10% cho đơn hàng từ 100.000đ.',
-    code: 'CHAO10',
-    discountType: 'PERCENT',
+    id: "PROMO-001",
+    name: "Chào bạn mới",
+    description: "Giảm 10% cho đơn hàng từ 100.000đ.",
+    code: "CHAO10",
+    discountType: "PERCENT",
     discountValue: 10,
     minimumOrder: 100000,
     maximumDiscount: 30000,
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
     memberOnly: false,
-    active: true
+    active: true,
   },
   {
-    id: 'PROMO-002',
-    name: 'Ưu đãi thành viên',
-    description: 'Ưu đãi dành riêng cho thành viên MilktyWay.',
-    code: 'MEMBER10',
-    discountType: 'PERCENT',
+    id: "PROMO-002",
+    name: "Ưu đãi thành viên",
+    description: "Ưu đãi dành riêng cho thành viên MilktyWay.",
+    code: "MEMBER10",
+    discountType: "PERCENT",
     discountValue: 10,
     minimumOrder: 0,
     maximumDiscount: 50000,
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
+    startDate: "2026-01-01",
+    endDate: "2026-12-31",
     memberOnly: true,
-    active: true
-  }
+    active: true,
+  },
 ];
 
 export const demoMembers: MemberProfile[] = [
   {
-    id: 'MEMBER-DEMO-001',
-    name: 'Khách hàng demo',
-    phone: '0900000001',
-    email: 'demo@milktyway.test',
+    id: "MEMBER-DEMO-001",
+    name: "Khách hàng demo",
+    phone: "0900000001",
+    email: "demo@milktyway.test",
     points: 1250,
-    tier: 'GOLD',
+    tier: "GOLD",
     discountPercent: 10,
-    joinedAt: '2026-01-01'
-  }
+    joinedAt: "2026-01-01",
+    pointHistory: [
+      {
+        id: "PTS-001",
+        createdAt: "2026-09-01T10:00:00+07:00",
+        type: "EARN",
+        points: 500,
+        description: "Tích điểm từ các đơn hàng tháng 8",
+      },
+      {
+        id: "PTS-002",
+        createdAt: "2026-09-15T14:00:00+07:00",
+        type: "EARN",
+        points: 500,
+        description: "Thưởng hội viên",
+      },
+      {
+        id: "PTS-003",
+        createdAt: "2026-10-01T09:00:00+07:00",
+        type: "EARN",
+        points: 300,
+        description: "Tích điểm từ đơn hàng",
+      },
+      {
+        id: "PTS-004",
+        createdAt: "2026-10-10T16:00:00+07:00",
+        type: "REDEEM",
+        points: -50,
+        description: "Đổi điểm giảm giá đơn hàng",
+      },
+    ],
+  },
 ];
 
 export const memberTierLabels: Record<MemberTier, string> = {
-  BRONZE: 'Đồng',
-  SILVER: 'Bạc',
-  GOLD: 'Vàng',
-  VIP: 'VIP'
+  BRONZE: "Đồng",
+  SILVER: "Bạc",
+  GOLD: "Vàng",
+  VIP: "VIP",
 };
