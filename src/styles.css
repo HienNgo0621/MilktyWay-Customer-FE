@@ -3832,3 +3832,186 @@ body {
 .footer-links {
   flex-wrap: wrap;
 }
+
+/* =========================================================
+   ĐỒNG BỘ FONT VÀ THU NHỎ CHỮ TRANG #/TRACK & #/ORDERS
+========================================================= */
+
+/* 1. Thu nhỏ tiêu đề và chữ trong form tra cứu (hình ảnh của bạn) */
+.feature-search-form label,
+.feature-action-form label {
+  font-size: 11px; /* Giảm từ 12px/mặc định xuống 11px */
+  color: #4f6053;  /* Đồng bộ màu chữ muted giống form checkout */
+}
+
+/* 2. Sửa lỗi chữ quá to trong ô nhập liệu (Input) trên Mobile */
+@media (max-width: 700px) {
+  .feature-search-form input,
+  .feature-search-form select,
+  .feature-action-form input,
+  .feature-action-form select,
+  .feature-action-form textarea {
+    font-size: 12px !important; /* Hạ từ 16px xuống 12px cho đồng bộ */
+    min-height: 40px !important; /* Thu gọn chiều cao ô nhập cho cân đối */
+    padding: 10px 12px !important;
+  }
+}
+
+/* 3. Thu nhỏ chữ trong các thẻ thông tin chi tiết đơn hàng (Info Grid) */
+.feature-info-grid > div, 
+.member-stat-grid > div {
+  padding: 10px 12px;
+}
+
+.feature-info-grid small, 
+.member-stat-grid small {
+  font-size: 9px; /* Thu nhỏ chữ chú thích */
+}
+
+.feature-info-grid b, 
+.member-stat-grid strong {
+  font-size: 11px; /* Thu nhỏ chữ giá trị hiển thị chính */
+}
+
+/* 4. Thu nhỏ font chữ của nút "Tra cứu đơn hàng" */
+.feature-search-form .btn,
+.feature-action-form .btn {
+  font-size: 11px;
+  min-height: 40px;
+}
+/* =========================================================
+   THU NHỎ KẾT QUẢ TRA CỨU ĐƠN HÀNG (ORDER DETAILS)
+========================================================= */
+
+/* 1. Thu nhỏ phần tiêu đề mã đơn hàng và ngày đặt */
+.order-modal-header h2, 
+.feature-heading-row h2 {
+  font-size: 16px !important; /* Hạ từ 21px xuống 16px cho vừa vặn */
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+}
+
+.order-modal-header p,
+.feature-heading-row p,
+.feature-page small {
+  font-size: 10px !important; /* Thu nhỏ phần chữ hiển thị ngày tháng */
+  color: #7c887f;
+}
+
+/* 2. Thu nhỏ nhãn trạng thái (Badge ví dụ: Đang chờ xử lý yêu cầu hủy) */
+.status-pill {
+  font-size: 10px !important; /* Hạ từ 13px xuống 10px */
+  padding: 4px 10px !important; /* Thu gọn khoảng cách viền của badge */
+}
+
+/* 3. Sửa phần lưới thông tin chi tiết (Người nhận, Số điện thoại, Chi nhánh...) */
+.feature-info-grid > div,
+.member-stat-grid > div {
+  padding: 8px 12px !important; /* Thu hẹp khoảng cách bên trong mỗi ô */
+  gap: 3px !important;
+}
+
+/* Tên nhãn (Ví dụ: Người nhận, Số điện thoại) */
+.feature-info-grid small,
+.member-stat-grid small {
+  font-size: 8px !important; /* Giảm cỡ chữ nhãn xuống siêu nhỏ cho tinh tế */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Giá trị bên trong (Ví dụ: Ngô Phương Hiển, 0819407955) */
+.feature-info-grid b,
+.member-stat-grid strong {
+  font-size: 11px !important; /* Cỡ chữ nội dung chính */
+  font-weight: 600;
+  color: #26372f;
+}
+
+/* 4. Tối ưu giao diện lưới thông tin trên Mobile để không bị thô */
+@media (max-width: 640px) {
+  .feature-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important; /* Giữ hiển thị 2 cột thay vì bị tràn thành 1 cột quá to */
+    gap: 8px !important;
+  }
+}
+/* =========================================================
+   THU NHỎ TOÀN DIỆN TRANG LỊCH SỬ (#/ORDERS) & POPUP CHI TIẾT
+========================================================= */
+
+/* 1. Thu nhỏ toàn bộ text cấu trúc bao quanh trang feature/history */
+.feature-page,
+.order-history-card,
+.history-order-card,
+.order-modal {
+  font-size: 11px !important;
+}
+
+/* 2. Thu nhỏ thẻ tiêu đề phụ & số lượng sản phẩm (Ví dụ: 1 sản phẩm, 2 loại sản phẩm) */
+.history-order-card h2,
+.order-history-top b,
+.history-order-card p,
+.feature-order-item b {
+  font-size: 12px !important;
+  color: #26372f !important;
+}
+
+/* 3. Ép nhỏ giá tiền lớn ở cột bên phải (Ví dụ: 155.000 đ) */
+.order-history-bottom b,
+.feature-order-item strong,
+.order-modal b {
+  font-size: 13px !important;
+  color: var(--brand) !important;
+}
+
+/* 4. Thu nhỏ các chữ ghi chú xám (Ngày đặt, Mã đơn hàng phụ, chi tiết món) */
+.order-history-top small,
+.history-order-card small,
+.feature-order-item small,
+.order-modal-header p,
+.timeline-item small {
+  font-size: 9px !important;
+  color: #7c887f !important;
+}
+
+/* 5. Ép nhỏ các nút chức năng (Xem chi tiết, Đóng) */
+.history-order-actions .btn,
+.order-modal-close,
+.demo-step-panel .btn,
+.mock-payment-panel .btn {
+  font-size: 10px !important;
+  min-height: 32px !important;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+}
+
+/* 6. Thu nhỏ popup chi tiết đơn hàng (Modal đang bị xếp đè trong hình 2) */
+.order-modal {
+  padding: 14px !important;
+  border-radius: 12px !important;
+}
+.order-modal-header h2 {
+  font-size: 15px !important;
+  margin-top: 0 !important;
+}
+
+/* 7. Thu nhỏ khu vực Tiến trình đơn hàng & Tiến trình tính toán (Tạm tính, Ưu đãi...) */
+.demo-step-panel b,
+.mock-payment-panel h3 {
+  font-size: 11px !important;
+}
+.demo-step-panel p,
+.mock-payment-panel p {
+  font-size: 10px !important;
+  line-height: 1.5 !important;
+}
+
+/* 8. Thu nhỏ phần dòng Timeline (Dấu chấm xanh thể hiện trạng thái đơn) */
+.timeline-item {
+  font-size: 10px !important;
+  gap: 8px !important;
+}
+.timeline-dot {
+  width: 8px !important;
+  height: 8px !important;
+  margin-top: 4px !important;
+}

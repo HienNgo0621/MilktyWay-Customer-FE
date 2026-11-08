@@ -302,7 +302,15 @@ export function PromotionsPage() {
 export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
   const [phone, setPhone] = useState("");
   const [searched, setSearched] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  // Chỉ lưu ID, không lưu object đơn hàng.
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+  // Luôn lấy object mới nhất từ danh sách orders.
+  const selectedOrder = selectedOrderId
+    ? (orders.find((order) => order.id === selectedOrderId) ?? null)
+    : null;
+
   const normalizedPhone = phone.replace(/\s/g, "");
 
   const customerOrders = searched
@@ -335,6 +343,7 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
             onChange={(event) => {
               setPhone(event.target.value);
               setSearched(false);
+              setSelectedOrderId(null);
             }}
             type="tel"
             pattern="0[0-9]{9}"
@@ -393,7 +402,7 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
                   <button
                     type="button"
                     className="btn btn-soft btn-small"
-                    onClick={() => setSelectedOrder(order)}
+                    onClick={() => setSelectedOrderId(order.id)}
                   >
                     Xem chi tiết
                   </button>
@@ -406,7 +415,7 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
       {selectedOrder && (
         <div
           className="order-modal-backdrop"
-          onClick={() => setSelectedOrder(null)}
+          onClick={() => setSelectedOrderId(null)}
         >
           <section
             className="order-modal"
@@ -431,7 +440,7 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
                 type="button"
                 className="order-modal-close"
                 aria-label="Đóng cửa sổ chi tiết"
-                onClick={() => setSelectedOrder(null)}
+                onClick={() => setSelectedOrderId(null)}
               >
                 ×
               </button>
@@ -577,7 +586,7 @@ export function OrderHistoryPage({ orders }: OrderHistoryPageProps) {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => setSelectedOrder(null)}
+                onClick={() => setSelectedOrderId(null)}
               >
                 Đóng
               </button>
@@ -729,10 +738,20 @@ export function OrderTrackingPage({
 }: OrderTrackingPageProps) {
   const [orderCode, setOrderCode] = useState("");
   const [phone, setPhone] = useState("");
-  const [searchedOrder, setSearchedOrder] = useState<Order | null>(null);
+
+  // Chỉ lưu ID của đơn hàng được tra cứu.
+  const [searchedOrderId, setSearchedOrderId] = useState<string | null>(null);
+
+  // Luôn lấy dữ liệu đơn hàng mới nhất từ props orders.
+  const searchedOrder = searchedOrderId
+    ? (orders.find((order) => order.id === searchedOrderId) ?? null)
+    : null;
+
   const [error, setError] = useState("");
+
   const [requestType, setRequestType] =
     useState<OrderActionRequest["type"]>("CANCEL");
+
   const [reason, setReason] = useState("");
 
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
@@ -748,23 +767,32 @@ export function OrderTrackingPage({
     );
 
     if (!foundOrder) {
-      setSearchedOrder(null);
+      setSearchedOrderId(null);
+
       setError(
         "Không tìm thấy đơn hàng. Vui lòng kiểm tra mã đơn và số điện thoại.",
       );
+
       return;
     }
 
-    setSearchedOrder(foundOrder);
+    // Chỉ lưu ID đơn hàng.
+    setSearchedOrderId(foundOrder.id);
+
     setError("");
     setReason("");
   };
 
+  const hasPendingRequest =
+    searchedOrder?.actionRequests.some(
+      (request) => request.requestStatus === "PENDING",
+    ) ?? false;
+
   const canRequestAction =
     searchedOrder !== null &&
+    !hasPendingRequest &&
     (searchedOrder.status === "PENDING_CONFIRMATION" ||
       searchedOrder.status === "CONFIRMED");
-
   const handleRequest = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -780,21 +808,20 @@ export function OrderTrackingPage({
       return;
     }
 
-    // Gọi hàm ở App.tsx và nhận đơn hàng sau cập nhật
     const updatedOrder = onRequestAction(
       searchedOrder.id,
       requestType,
       reason.trim(),
     );
 
-    // Nếu xử lý thất bại thì không cập nhật giao diện
     if (!updatedOrder) {
       setError("Không thể gửi yêu cầu. Vui lòng thử lại.");
       return;
     }
 
-    // Đồng bộ state riêng của OrderTrackingPage
-    setSearchedOrder(updatedOrder);
+    // Không cần setSearchedOrder nữa.
+    // App.tsx đã cập nhật orders.
+    // searchedOrder sẽ tự lấy bản mới nhất từ orders.
 
     setReason("");
 
@@ -810,15 +837,14 @@ export function OrderTrackingPage({
       return;
     }
 
-    // Gọi hàm cập nhật trạng thái ở App.tsx
     const updatedOrder = onAdvanceOrderStatus(searchedOrder.id);
 
     if (!updatedOrder) {
       return;
     }
 
-    // Đồng bộ đơn hàng đang được tra cứu
-    setSearchedOrder(updatedOrder);
+    // Không giữ lại object cũ trong state.
+    // React render lại dựa trên orders đã được App.tsx cập nhật.
 
     setError("");
   };
@@ -839,7 +865,11 @@ export function OrderTrackingPage({
           Mã đơn hàng
           <input
             value={orderCode}
-            onChange={(event) => setOrderCode(event.target.value)}
+            onChange={(event) => {
+              setOrderCode(event.target.value);
+              setSearchedOrderId(null);
+              setError("");
+            }}
             placeholder="Ví dụ: IV-12345678"
             required
           />
@@ -849,7 +879,11 @@ export function OrderTrackingPage({
           Số điện thoại đặt hàng
           <input
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={(event) => {
+              setPhone(event.target.value);
+              setSearchedOrderId(null);
+              setError("");
+            }}
             placeholder="09xxxxxxxx"
             type="tel"
             pattern="0[0-9]{9}"

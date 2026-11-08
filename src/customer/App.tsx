@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   Link,
@@ -54,6 +54,7 @@ import {
   type MemberProfile,
 } from "./data";
 import {
+  ORDER_STORAGE_KEY,
   loadOrders,
   saveOrders,
   loadMemberProfile,
@@ -131,6 +132,49 @@ function App() {
   const [lastOrder, setLastOrder] = useState<Order | null>(() =>
     readStore("MilktyWay-last-order", null),
   );
+  // =====================================================
+  // CENTRALIZED ORDER STATE
+  // orders là nguồn dữ liệu chính.
+  // ordersRef giúp các hàm luôn đọc được dữ liệu mới nhất.
+  // =====================================================
+
+  const ordersRef = useRef<Order[]>(orders);
+
+  // Thay thế toàn bộ danh sách đơn hàng.
+  const replaceOrders = (nextOrders: Order[]) => {
+    ordersRef.current = nextOrders;
+    setOrders(nextOrders);
+  };
+
+  // Cập nhật một đơn hàng theo ID.
+  // Hàm trả về object mới sau khi cập nhật thành công.
+  const updateOrder = (
+    orderId: string,
+    updater: (currentOrder: Order) => Order,
+  ): Order | null => {
+    const currentOrder = ordersRef.current.find(
+      (order) => order.id === orderId,
+    );
+
+    if (!currentOrder) {
+      return null;
+    }
+
+    const updatedOrder = updater(currentOrder);
+
+    const nextOrders = ordersRef.current.map((order) =>
+      order.id === orderId ? updatedOrder : order,
+    );
+
+    replaceOrders(nextOrders);
+
+    // Đồng bộ đơn hàng vừa cập nhật nếu đang là đơn gần nhất.
+    setLastOrder((currentLastOrder) =>
+      currentLastOrder?.id === orderId ? updatedOrder : currentLastOrder,
+    );
+
+    return updatedOrder;
+  };
   const [couponInput, setCouponInput] = useState("");
   const [memberPhone, setMemberPhone] = useState(() =>
     readStore("MilktyWay-member-phone", ""),
@@ -159,6 +203,43 @@ function App() {
       console.error("Không thể lưu danh sách đơn hàng.");
     }
   }, [orders]);
+  // =====================================================
+  // CROSS-TAB ORDER SYNCHRONIZATION
+  // Đồng bộ khi localStorage thay đổi từ tab khác.
+  // =====================================================
+
+  useEffect(() => {
+    const handleOrdersStorage = (event: StorageEvent) => {
+      if (event.key !== ORDER_STORAGE_KEY && event.key !== null) {
+        return;
+      }
+
+      // Nếu key bị xóa hoặc localStorage.clear() được gọi.
+      // Không gọi loadOrders() trong trường hợp này vì
+      // loadOrders có thể khởi tạo lại mock data.
+      const nextOrders = event.newValue === null ? [] : loadOrders();
+
+      ordersRef.current = nextOrders;
+      setOrders(nextOrders);
+
+      // Đồng bộ lastOrder nếu đơn tương ứng còn tồn tại.
+      setLastOrder((currentLastOrder) => {
+        if (!currentLastOrder) {
+          return null;
+        }
+
+        return (
+          nextOrders.find((order) => order.id === currentLastOrder.id) ?? null
+        );
+      });
+    };
+
+    window.addEventListener("storage", handleOrdersStorage);
+
+    return () => {
+      window.removeEventListener("storage", handleOrdersStorage);
+    };
+  }, []);
   useEffect(() => {
     localStorage.setItem("MilktyWay-last-order", JSON.stringify(lastOrder));
   }, [lastOrder]);
@@ -364,9 +445,8 @@ function App() {
         complaints: [],
       };
 
-      setOrders((previous) => [next, ...previous]);
+      replaceOrders([next, ...ordersRef.current]);
       setLastOrder(next);
-
       setCart((items) => items.filter((item) => !item.selected));
 
       setCouponCode("");
@@ -383,21 +463,14 @@ function App() {
 
   const mockPaymentResult = (orderId: string, result: "PAID" | "FAILED") => {
     try {
-      const updatedOrders = orders.map((order) =>
-        order.id === orderId
-          ? {
-              ...order,
-              paymentStatus: result,
-            }
-          : order,
-      );
+      const updatedOrder = updateOrder(orderId, (currentOrder) => ({
+        ...currentOrder,
+        paymentStatus: result,
+      }));
 
-      setOrders(updatedOrders);
-
-      const updatedOrder = updatedOrders.find((order) => order.id === orderId);
-
-      if (updatedOrder && lastOrder?.id === orderId) {
-        setLastOrder(updatedOrder);
+      if (!updatedOrder) {
+        setToast("Không tìm thấy đơn hàng.");
+        return;
       }
 
       setToast(
@@ -407,6 +480,7 @@ function App() {
       );
     } catch (error) {
       console.error("Lỗi cập nhật trạng thái thanh toán demo:", error);
+
       setToast("Không thể cập nhật trạng thái thanh toán.");
     }
   };
@@ -417,7 +491,10 @@ function App() {
     reason: string,
   ): Order | null => {
     try {
-      const targetOrder = orders.find((order) => order.id === orderId);
+      // Luôn lấy dữ liệu mới nhất từ ordersRef.
+      const targetOrder = ordersRef.current.find(
+        (order) => order.id === orderId,
+      );
 
       if (!targetOrder) {
         setToast("Không tìm thấy đơn hàng.");
@@ -433,6 +510,17 @@ function App() {
         return null;
       }
 
+      // Không cho gửi nhiều yêu cầu khi yêu cầu trước
+      // vẫn đang chờ cửa hàng xử lý.
+      const hasPendingRequest = targetOrder.actionRequests.some(
+        (request) => request.requestStatus === "PENDING",
+      );
+
+      if (hasPendingRequest) {
+        setToast("Đơn hàng đã có yêu cầu đang chờ xử lý.");
+        return null;
+      }
+
       const now = new Date().toISOString();
 
       const request: OrderActionRequest = {
@@ -443,47 +531,42 @@ function App() {
         requestStatus: "PENDING",
       };
 
-      const nextStatus =
-        type === "CANCEL" ? "CANCEL_REQUESTED" : targetOrder.status;
+      const updatedOrder = updateOrder(orderId, (currentOrder) => {
+        const nextStatus =
+          type === "CANCEL" ? "CANCEL_REQUESTED" : currentOrder.status;
 
-      const updatedOrder: Order = {
-        ...targetOrder,
+        return {
+          ...currentOrder,
 
-        status: nextStatus,
+          status: nextStatus,
 
-        actionRequests: [...targetOrder.actionRequests, request],
+          actionRequests: [...currentOrder.actionRequests, request],
 
-        statusHistory:
-          type === "CANCEL"
-            ? [
-                ...targetOrder.statusHistory,
-                {
-                  status: "CANCEL_REQUESTED",
-                  at: now,
-                  note: "Khách hàng đã gửi yêu cầu hủy đơn.",
-                },
-              ]
-            : targetOrder.statusHistory,
-      };
+          statusHistory:
+            type === "CANCEL"
+              ? [
+                  ...currentOrder.statusHistory,
+                  {
+                    status: "CANCEL_REQUESTED",
+                    at: now,
+                    note: "Khách hàng đã gửi yêu cầu hủy đơn.",
+                  },
+                ]
+              : currentOrder.statusHistory,
+        };
+      });
 
-      const nextOrders = orders.map((order) =>
-        order.id === orderId ? updatedOrder : order,
-      );
-
-      // Cập nhật danh sách đơn hàng chung
-      setOrders(nextOrders);
-
-      // Đồng bộ đơn hàng vừa cập nhật với trang xác nhận
-      if (lastOrder?.id === orderId) {
-        setLastOrder(updatedOrder);
+      if (!updatedOrder) {
+        setToast("Không thể cập nhật đơn hàng.");
+        return null;
       }
 
       setToast("Đã ghi nhận yêu cầu của bạn.");
 
-      // QUAN TRỌNG: trả về đơn hàng mới cho component gọi hàm
       return updatedOrder;
     } catch (error) {
       console.error("Lỗi khi gửi yêu cầu đổi/hủy đơn:", error);
+
       setToast("Không thể gửi yêu cầu. Vui lòng thử lại.");
 
       return null;
@@ -492,29 +575,28 @@ function App() {
 
   const advanceOrderStatus = (orderId: string): Order | null => {
     try {
-      // Tìm đơn hàng cần cập nhật
-      const targetOrder = orders.find((order) => order.id === orderId);
+      // Lấy bản mới nhất của đơn hàng.
+      const targetOrder = ordersRef.current.find(
+        (order) => order.id === orderId,
+      );
 
       if (!targetOrder) {
         setToast("Không tìm thấy đơn hàng.");
         return null;
       }
 
-      // Quy định trạng thái kế tiếp
+      // Các trạng thái tiếp theo.
       const nextStatusMap: Partial<Record<OrderStatus, OrderStatus>> = {
         PENDING_CONFIRMATION: "CONFIRMED",
         CONFIRMED: "PREPARING",
         PREPARING: "READY",
         READY: "DELIVERING",
         DELIVERING: "COMPLETED",
-
-        // Nhánh xác nhận hủy đơn
         CANCEL_REQUESTED: "CANCELLED",
       };
 
       const nextStatus = nextStatusMap[targetOrder.status];
 
-      // Không còn trạng thái tiếp theo
       if (!nextStatus) {
         setToast("Đơn hàng đã ở trạng thái kết thúc.");
         return null;
@@ -522,7 +604,6 @@ function App() {
 
       const now = new Date().toISOString();
 
-      // Nội dung lịch sử tương ứng từng trạng thái
       const statusNotes: Partial<Record<OrderStatus, string>> = {
         CONFIRMED: "Cửa hàng đã xác nhận đơn hàng.",
         PREPARING: "Cửa hàng bắt đầu pha chế.",
@@ -532,56 +613,53 @@ function App() {
         CANCELLED: "Cửa hàng đã xác nhận hủy đơn.",
       };
 
-      // Nếu cửa hàng xác nhận hủy,
-      // cập nhật yêu cầu hủy đang chờ thành APPROVED
-      const updatedActionRequests =
-        nextStatus === "CANCELLED"
-          ? targetOrder.actionRequests.map((request) =>
-              request.type === "CANCEL" && request.requestStatus === "PENDING"
-                ? {
-                    ...request,
-                    requestStatus: "APPROVED" as const,
-                  }
-                : request,
-            )
-          : targetOrder.actionRequests;
+      const updatedOrder = updateOrder(orderId, (currentOrder) => {
+        // Khi cửa hàng xác nhận hủy,
+        // yêu cầu CANCEL đang chờ sẽ chuyển sang APPROVED.
+        const updatedActionRequests =
+          nextStatus === "CANCELLED"
+            ? currentOrder.actionRequests.map((request) =>
+                request.type === "CANCEL" && request.requestStatus === "PENDING"
+                  ? {
+                      ...request,
+                      requestStatus: "APPROVED" as const,
+                    }
+                  : request,
+              )
+            : currentOrder.actionRequests;
 
-      // Tạo đối tượng đơn hàng mới
-      const updatedOrder: Order = {
-        ...targetOrder,
+        const statusNote =
+          statusNotes[nextStatus] ?? "Trạng thái đơn hàng đã được cập nhật.";
 
-        status: nextStatus,
+        return {
+          ...currentOrder,
 
-        actionRequests: updatedActionRequests,
+          status: nextStatus,
 
-        // Thêm một bước vào timeline
-        statusHistory: [
-          ...targetOrder.statusHistory,
-          {
-            status: nextStatus,
-            at: now,
-            note:
-              statusNotes[nextStatus] ??
-              "Trạng thái đơn hàng đã được cập nhật.",
-          },
-        ],
-      };
+          actionRequests: updatedActionRequests,
 
-      // Cập nhật danh sách đơn hàng chung
-      setOrders((currentOrders) =>
-        currentOrders.map((order) =>
-          order.id === orderId ? updatedOrder : order,
-        ),
-      );
+          statusHistory: [
+            ...currentOrder.statusHistory,
+            {
+              status: nextStatus,
+              at: now,
+              note: statusNote,
+            },
+          ],
+        };
+      });
 
-      // Đồng bộ nếu đơn hàng đang là đơn vừa đặt gần nhất
-      if (lastOrder?.id === orderId) {
-        setLastOrder(updatedOrder);
+      if (!updatedOrder) {
+        setToast("Không thể cập nhật trạng thái đơn hàng.");
+        return null;
       }
 
-      setToast(`Đã chuyển trạng thái: ${statusNotes[nextStatus]}`);
+      setToast(
+        `Đã chuyển trạng thái: ${
+          statusNotes[nextStatus] ?? "Trạng thái đơn hàng đã được cập nhật."
+        }`,
+      );
 
-      // Trả về đơn hàng mới cho OrderTrackingPage
       return updatedOrder;
     } catch (error) {
       console.error("Lỗi khi mô phỏng trạng thái đơn hàng:", error);
@@ -610,7 +688,7 @@ function App() {
     description: string,
   ): boolean => {
     try {
-      const targetOrder = orders.find(
+      const targetOrder = ordersRef.current.find(
         (order) =>
           order.id === orderId &&
           order.phone.replace(/\s/g, "") === phone.replace(/\s/g, ""),
@@ -628,20 +706,12 @@ function App() {
         complaintStatus: "OPEN",
       };
 
-      const updatedOrder: Order = {
-        ...targetOrder,
-        complaints: [...targetOrder.complaints, complaint],
-      };
+      const updatedOrder = updateOrder(orderId, (currentOrder) => ({
+        ...currentOrder,
+        complaints: [...currentOrder.complaints, complaint],
+      }));
 
-      setOrders((current) =>
-        current.map((order) => (order.id === orderId ? updatedOrder : order)),
-      );
-
-      if (lastOrder?.id === orderId) {
-        setLastOrder(updatedOrder);
-      }
-
-      return true;
+      return updatedOrder !== null;
     } catch (error) {
       console.error("Lỗi khi tạo khiếu nại:", error);
       return false;
@@ -1404,7 +1474,6 @@ function ProductDialog({
                   onClick={() => setSize(value)}
                 >
                   {value}
-                  {value === "L" ? " · +6.000đ" : ""}
                 </button>
               ))}
             </div>
