@@ -546,49 +546,56 @@ textarea:focus-visible {
   place-items: center;
   box-shadow: 0 3px 12px #1d352520;
 }
+
 .product-info {
-  padding: 13px 14px 14px;
+  padding: 12px 13px 13px;
 }
+
 .product-category {
   font-size: 8px;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: #8b9888;
   font-weight: 700;
 }
+
 .product-name {
   display: block;
   text-align: left;
   border: 0;
   background: none;
   padding: 0;
-  margin: 7px 0 4px;
+  margin: 6px 0 4px;
   color: #34453a;
   font-weight: 700;
-  font-size: 13px;
-  line-height: 1.5;
-  min-height: 39px;
+  font-size: 12px;
+  line-height: 1.4;
+  min-height: 35px;
 }
+
 .product-description {
-  font-size: 10px;
+  font-size: 9px;
   color: #899389;
   line-height: 1.5;
   margin: 0;
-  min-height: 30px;
+  min-height: 28px;
 }
+
 .product-card-bottom {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
+  margin-top: 10px;
 }
+
 .product-card-bottom > b {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--brand);
 }
+
 .add-button {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 0;
   border-radius: 50%;
   background: #eaf1e8;
@@ -596,6 +603,7 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
 }
+
 .unavailable .product-visual img {
   filter: grayscale(0.8);
   opacity: 0.55;
@@ -2030,6 +2038,35 @@ textarea:focus-visible {
     padding-right: 26px;
   }
 }
+
+/* PRODUCT CARD - MOBILE */
+@media (max-width: 700px) {
+  .product-card .product-info {
+    padding: 9px;
+  }
+
+  .product-card .product-name {
+    font-size: 11px;
+    line-height: 1.4;
+    min-height: 32px;
+  }
+
+  .product-card .product-description {
+    font-size: 9px;
+    line-height: 1.5;
+    min-height: 27px;
+  }
+
+  .product-card .product-card-bottom > b {
+    font-size: 12px;
+  }
+
+  .product-card .add-button {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 @media (max-width: 800px) {
   .desktop-nav {
     gap: 15px;
@@ -3780,4 +3817,18 @@ body {
   padding: 0 15px;
   font-size: 12px;
   border-radius: 10px;
+}
+
+/* 5 mục điều hướng trên điện thoại */
+.mobile-bottom-nav {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.mobile-nav-item {
+  min-width: 0;
+  font-size: 8px;
+}
+
+.footer-links {
+  flex-wrap: wrap;
 }

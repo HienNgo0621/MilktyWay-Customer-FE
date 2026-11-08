@@ -823,6 +823,8 @@ function Header({
         <nav className="desktop-nav" aria-label="Điều hướng chính">
           <NavLink to="/">Trang chủ</NavLink>
           <NavLink to="/menu">Thực đơn</NavLink>
+          <NavLink to="/orders">Lịch sử</NavLink>
+          <NavLink to="/track">Tra cứu đơn</NavLink>
         </nav>
         <div className="header-actions">
           <button className="branch-trigger" onClick={onBranch}>
@@ -849,6 +851,8 @@ function BottomNav({ count }: { count: number }) {
   const items = [
     { to: "/", label: "Trang chủ", icon: Home, end: true },
     { to: "/menu", label: "Thực đơn", icon: Coffee },
+    { to: "/orders", label: "Lịch sử", icon: Clock3 },
+    { to: "/track", label: "Tra cứu", icon: PackageCheck },
     { to: "/cart", label: "Giỏ hàng", icon: ShoppingBag, count },
   ];
   return (
@@ -891,6 +895,8 @@ function Footer() {
         </div>
         <div className="footer-links">
           <Link to="/menu">Thực đơn</Link>
+          <Link to="/orders">Lịch sử mua hàng</Link>
+          <Link to="/track">Tra cứu đơn hàng</Link>
           <Link to="/cart">Giỏ hàng</Link>
           <button
             className="footer-member-link"
