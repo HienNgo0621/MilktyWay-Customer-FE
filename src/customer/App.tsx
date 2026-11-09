@@ -34,6 +34,7 @@ import {
   Clock3,
   Coffee,
   CreditCard,
+  CircleHelp,
   Gift,
   Heart,
   Home,
@@ -55,6 +56,7 @@ import {
   Printer,
 } from "lucide-react";
 import {
+  getMemberTierFromPoints,
   availableAt,
   branches,
   categoryLabels,
@@ -82,9 +84,69 @@ type Totals = {
   subtotal: number;
   loyalty: number;
   shipping: number;
-  pointsUsed: number;
-  pointsDiscount: number;
   total: number;
+};
+
+// Mức giảm giá theo hạng hội viên.
+const MEMBER_TIER_DISCOUNTS: Record<
+  MemberProfile["tier"],
+  number
+> = {
+  BRONZE: 3000,
+  SILVER: 4000,
+  GOLD: 6000,
+
+  // VIP là hạng cũ, tạm áp dụng mức ưu đãi cao nhất.
+  VIP: 6000,
+};
+
+// Lấy mức giảm theo hạng thành viên.
+const getMemberDiscount = (
+  member: MemberProfile | null,
+): number => {
+  if (!member) {
+    return 0;
+  }
+
+  return MEMBER_TIER_DISCOUNTS[member.tier];
+};
+
+// Tính toàn bộ hóa đơn.
+const getTotals = (
+  items: CartItem[],
+  member: MemberProfile | null,
+): Totals => {
+  // 1. Tổng tiền sản phẩm.
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.unitPrice * item.quantity,
+    0,
+  );
+
+  // 2. Giảm trực tiếp theo hạng hội viên.
+  // Không giảm vượt quá giá trị sản phẩm.
+  const loyalty = Math.min(
+    getMemberDiscount(member),
+    subtotal,
+  );
+
+  // 3. Chính sách giao hàng được giữ nguyên.
+  const shipping =
+    subtotal === 0 || subtotal >= 150000
+      ? 0
+      : 15000;
+
+  // 4. Tổng thanh toán sau khi giảm giá.
+  const total = Math.max(
+    0,
+    subtotal - loyalty + shipping,
+  );
+
+  return {
+    subtotal,
+    loyalty,
+    shipping,
+    total,
+  };
 };
 const readStore = <T,>(key: string, fallback: T): T => {
   try {
@@ -93,44 +155,6 @@ const readStore = <T,>(key: string, fallback: T): T => {
   } catch {
     return fallback;
   }
-};
-const getTotals = (
-  items: CartItem[],
-  member: MemberProfile | null,
-  usePoints: boolean,
-): Totals => {
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
-    0,
-  );
-
-  // Hội viên hợp lệ được giảm trực tiếp 3.000đ.
-  const loyalty = member ? Math.min(3000, subtotal) : 0;
-
-  // Giữ nguyên chính sách giao hàng hiện tại.
-  const shipping = subtotal === 0 || subtotal >= 150000 ? 0 : 15000;
-
-  // Không còn cộng discount từ mã voucher.
-  const totalBeforePoints = Math.max(0, subtotal - loyalty + shipping);
-
-  // 1 điểm = 1.000đ.
-  const pointsUsed =
-    member && usePoints
-      ? Math.min(member.points, Math.floor(totalBeforePoints / 1000))
-      : 0;
-
-  const pointsDiscount = pointsUsed * 1000;
-
-  const total = Math.max(0, totalBeforePoints - pointsDiscount);
-
-  return {
-    subtotal,
-    loyalty,
-    shipping,
-    pointsUsed,
-    pointsDiscount,
-    total,
-  };
 };
 const uid = () =>
   globalThis.crypto?.randomUUID?.() ??
@@ -165,20 +189,24 @@ function App() {
           mockMember.phone.replace(/\D/g, ""),
       );
 
-      if (!savedMember) {
-        return mockMember;
-      }
+      const mergedMember: MemberProfile = savedMember
+        ? {
+          ...mockMember,
+          ...savedMember,
+
+          pointHistory:
+            savedMember.pointHistory ??
+            mockMember.pointHistory ??
+            [],
+        }
+        : mockMember;
 
       return {
-        ...mockMember,
-        ...savedMember,
-
-        // Bảo toàn lịch sử điểm nếu dữ liệu cũ chưa có trường này.
-        pointHistory: savedMember.pointHistory ?? mockMember.pointHistory ?? [],
+        ...mergedMember,
+        tier: getMemberTierFromPoints(mergedMember.points),
       };
     });
   });
-  const [usePoints, setUsePoints] = useState(false);
   const [cart, setCart] = useState<CartItem[]>(() =>
     readStore("MilktyWay-cart", []),
   );
@@ -332,12 +360,10 @@ function App() {
       (item) => item.phone.replace(/\D/g, "") === normalizedMemberPhone,
     ) ?? null;
 
-  const totals = getTotals(selectedItems, matchedMember, usePoints);
-  useEffect(() => {
-    if (!matchedMember) {
-      setUsePoints(false);
-    }
-  }, [matchedMember?.phone]);
+  const totals = getTotals(
+    selectedItems,
+    matchedMember,
+  );
   const openProduct = (product: Product) => {
     if (!branch) {
       setToast("Vui lòng chọn chi nhánh trước khi chọn món.");
@@ -489,7 +515,8 @@ function App() {
 
         subtotal: totals.subtotal,
 
-        discount: totals.loyalty + totals.pointsDiscount,
+        // Chỉ lưu khoản giảm theo hạng hội viên.
+        discount: totals.loyalty,
 
         shipping: totals.shipping,
         total: totals.total,
@@ -498,7 +525,6 @@ function App() {
         paymentMethod,
 
         memberPhone: matchedMember?.phone,
-        pointsUsed: totals.pointsUsed,
       };
 
       // ==========================================
@@ -781,11 +807,9 @@ function App() {
 
     const phone = order.memberPhone.replace(/\D/g, "");
 
-    // Tạm quy định: 10.000đ giá trị đơn hàng = 1 điểm.
-    // Có thể điều chỉnh theo chính sách của MilktyWay.
+    // Chính sách tích điểm hiện tại:
+    // 10.000đ giá trị đơn hàng = 1 điểm.
     const pointsEarned = Math.floor(order.total / 10000);
-
-    const pointsUsed = order.pointsUsed ?? 0;
 
     setMembers((currentMembers) =>
       currentMembers.map((member) => {
@@ -795,7 +819,7 @@ function App() {
 
         const history = member.pointHistory ?? [];
 
-        // Chống cộng/trừ điểm hai lần cho cùng đơn hàng.
+        // Không cộng điểm hai lần cho cùng một đơn hàng.
         const alreadySettled = history.some(
           (item) => item.orderId === order.id,
         );
@@ -805,17 +829,6 @@ function App() {
         }
 
         const transactions: MemberPointTransaction[] = [];
-
-        if (pointsUsed > 0) {
-          transactions.push({
-            id: uid(),
-            createdAt: new Date().toISOString(),
-            type: "REDEEM",
-            points: -pointsUsed,
-            description: `Đổi điểm cho đơn ${order.id}`,
-            orderId: order.id,
-          });
-        }
 
         if (pointsEarned > 0) {
           transactions.push({
@@ -828,17 +841,22 @@ function App() {
           });
         }
 
+        // Cập nhật tổng điểm mới.
+        const nextPoints = member.points + pointsEarned;
+
         return {
           ...member,
 
-          points: Math.max(0, member.points - pointsUsed + pointsEarned),
+          points: nextPoints,
+
+          // Tự động cập nhật hạng khi vượt mốc điểm.
+          tier: getMemberTierFromPoints(nextPoints),
 
           pointHistory: [...transactions, ...history],
         };
       }),
     );
   };
-
   const advanceOrderStatus = (orderId: string): Order | null => {
     try {
       // Lấy bản mới nhất của đơn hàng.
@@ -1049,8 +1067,6 @@ function App() {
                 memberPhone={memberPhone}
                 onMemberPhone={setMemberPhone}
                 matchedMember={matchedMember}
-                usePoints={usePoints}
-                onUsePoints={setUsePoints}
                 paymentMethod={paymentMethod}
                 onPaymentMethod={setPaymentMethod}
                 onSubmit={submitOrder}
@@ -1267,6 +1283,18 @@ function Header({
 
             {count > 0 && <b>{count}</b>}
           </Link>
+
+
+          <Link
+            to="/faqs"
+            className="header-help"
+            aria-label="Help - Câu hỏi thường gặp"
+            title="Câu hỏi thường gặp"
+          >
+            <CircleHelp size={19} />
+            <span>Help</span>
+          </Link>
+
 
         </div>
       </div>
@@ -2121,13 +2149,6 @@ function OrderSummary({
           <b>−{money(totals.loyalty)}</b>
         </div>
       )}
-      {totals.pointsDiscount > 0 && (
-        <div className="summary-line discount">
-          <span>Đổi {totals.pointsUsed.toLocaleString("vi-VN")} điểm</span>
-
-          <b>−{money(totals.pointsDiscount)}</b>
-        </div>
-      )}
       <div className="summary-line">
         <span>Giao hàng</span>
         <b>{money(totals.shipping)}</b>
@@ -2297,8 +2318,6 @@ function CheckoutPage({
   memberPhone,
   onMemberPhone,
   matchedMember,
-  usePoints,
-  onUsePoints,
   paymentMethod,
   onPaymentMethod,
   onSubmit,
@@ -2313,8 +2332,6 @@ function CheckoutPage({
   paymentMethod: PaymentMethod;
   onPaymentMethod: (value: PaymentMethod) => void;
   matchedMember: MemberProfile | null;
-  usePoints: boolean;
-  onUsePoints: (value: boolean) => void;
   onSubmit: (form: HTMLFormElement) => void;
   onBack: () => void;
 }) {
@@ -2424,7 +2441,9 @@ function CheckoutPage({
               <div className="member-checkout-result">
                 <b>{matchedMember.name}</b>
 
-                <p>Hạng: {memberTierLabels[matchedMember.tier]}</p>
+                <p>
+                  Hạng: {memberTierLabels[matchedMember.tier]}
+                </p>
 
                 <p>
                   Điểm hiện có:{" "}
@@ -2434,7 +2453,9 @@ function CheckoutPage({
                 </p>
 
                 <p className="success-message">
-                  Đã áp dụng giảm 3.000đ cho hội viên.
+                  Đã áp dụng ưu đãi hạng{" "}
+                  {memberTierLabels[matchedMember.tier]}:
+                  giảm {money(totals.loyalty)}.
                 </p>
               </div>
             ) : memberPhone.trim() ? (
@@ -2444,25 +2465,6 @@ function CheckoutPage({
               </p>
             ) : null}
 
-            {matchedMember && (
-              <label className="points-redeem-option">
-                <input
-                  type="checkbox"
-                  checked={usePoints}
-                  disabled={matchedMember.points <= 0}
-                  onChange={(event) => onUsePoints(event.target.checked)}
-                />
-
-                <span>
-                  <b>Dùng điểm thưởng để thanh toán</b>
-
-                  <small>
-                    {matchedMember.points.toLocaleString("vi-VN")} điểm hiện có.
-                    1 điểm = 1.000đ.
-                  </small>
-                </span>
-              </label>
-            )}
             <div className="checkout-branch">
               <MapPin size={19} />
               <div>

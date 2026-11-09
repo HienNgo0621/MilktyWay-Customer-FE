@@ -376,7 +376,39 @@ export const demoMembers: MemberProfile[] = [
         createdAt: "2026-10-10T16:00:00+07:00",
         type: "REDEEM",
         points: -50,
-        description: "Đổi điểm giảm giá đơn hàng",
+        description: "Điểm thưởng hết hạn",
+      },
+    ],
+  },
+  {
+    id: "MEMBER-DEMO-002",
+    name: "Nguyễn Minh Anh",
+    phone: "0900000002",
+    email: "minhanh@milktyway.test",
+    points: 180,
+    tier: "SILVER",
+    joinedAt: "2026-04-12",
+    pointHistory: [
+      {
+        id: "PTS-SILVER-001",
+        createdAt: "2026-10-12T10:30:00+07:00",
+        type: "EARN",
+        points: 80,
+        description: "Tích điểm từ đơn hàng",
+      },
+      {
+        id: "PTS-SILVER-002",
+        createdAt: "2026-10-29T14:15:00+07:00",
+        type: "EARN",
+        points: 120,
+        description: "Tích điểm từ đơn hàng",
+      },
+      {
+        id: "PTS-SILVER-003",
+        createdAt: "2026-11-03T16:00:00+07:00",
+        type: "REDEEM",
+        points: -20,
+        description: "Điểm thưởng hết hạn",
       },
     ],
   },
@@ -388,3 +420,75 @@ export const memberTierLabels: Record<MemberTier, string> = {
   GOLD: "Vàng",
   VIP: "VIP",
 };
+
+// =====================================================
+// MEMBER TIER PROGRESSION
+// Quy tắc xếp hạng theo tổng điểm tích lũy.
+// =====================================================
+
+export type RankedMemberTier = Exclude<MemberTier, "VIP">;
+
+export type MemberTierProgress = {
+  currentTier: RankedMemberTier;
+  nextTier: RankedMemberTier | null;
+  pointsNeeded: number;
+  targetPoints: number;
+  progressPercent: number;
+  isMaxTier: boolean;
+};
+
+// Xác định hạng hiện tại từ tổng điểm.
+export function getMemberTierFromPoints(points: number): RankedMemberTier {
+  const safePoints = Number.isFinite(points)
+    ? Math.max(0, Math.floor(points))
+    : 0;
+
+  if (safePoints >= 300) {
+    return "GOLD";
+  }
+
+  if (safePoints >= 100) {
+    return "SILVER";
+  }
+
+  return "BRONZE";
+}
+
+// Tính số điểm còn thiếu để lên hạng tiếp theo.
+export function getMemberTierProgress(points: number): MemberTierProgress {
+  const safePoints = Number.isFinite(points)
+    ? Math.max(0, Math.floor(points))
+    : 0;
+
+  const currentTier = getMemberTierFromPoints(safePoints);
+
+  // Gold là hạng cao nhất.
+  if (currentTier === "GOLD") {
+    return {
+      currentTier: "GOLD",
+      nextTier: null,
+      pointsNeeded: 0,
+      targetPoints: 300,
+      progressPercent: 100,
+      isMaxTier: true,
+    };
+  }
+
+  // Đồng cần đạt 100 điểm để lên Bạc.
+  // Bạc cần đạt 300 điểm để lên Vàng.
+  const nextTier = currentTier === "BRONZE" ? "SILVER" : "GOLD";
+
+  const targetPoints = currentTier === "BRONZE" ? 100 : 300;
+
+  return {
+    currentTier,
+    nextTier,
+    pointsNeeded: Math.max(0, targetPoints - safePoints),
+    targetPoints,
+    progressPercent: Math.min(
+      100,
+      Math.round((safePoints / targetPoints) * 100),
+    ),
+    isMaxTier: false,
+  };
+}

@@ -13,7 +13,7 @@ const faqItems = [
     id: 2,
     question: "Làm thế nào để đăng ký làm hội viên?",
     answer:
-      "Bạn có thể đăng ký tại trang Hội viên MilktyWay hoặc nhập số điện thoại khi thanh toán. Sau khi đăng ký thành công, thông tin hội viên sẽ được lưu trong dữ liệu demo.",
+      "Bạn có thể đăng ký trực tiếp với nhân viên tại quầy. Sau khi đăng ký thành công, thông tin hội viên sẽ được lưu trong dữ liệu demo.",
   },
   {
     id: 3,
@@ -25,7 +25,7 @@ const faqItems = [
     id: 4,
     question: "Tôi có thể hủy đơn hàng sau khi đặt không?",
     answer:
-      "Bạn có thể gửi yêu cầu hủy trong vòng 5 phút kể từ khi đặt hàng, khi đơn còn ở trạng thái chờ xác nhận hoặc đã xác nhận. Yêu cầu cần được cửa hàng xử lý trước khi đơn thực sự chuyển sang trạng thái Đã hủy.",
+      "Bạn có thể gửi yêu cầu hủy trước khi đơn được đưa vào pha chế, khi đơn còn ở trạng thái chờ xác nhận hoặc đã xác nhận. Yêu cầu cần được cửa hàng xử lý trước khi đơn thực sự chuyển sang trạng thái Đã hủy.",
   },
   {
     id: 5,
@@ -37,7 +37,7 @@ const faqItems = [
     id: 6,
     question: "Làm sao để xem trạng thái đơn hàng?",
     answer:
-      "Bạn vào mục Tra cứu đơn hàng, nhập mã đơn và số điện thoại đặt hàng. Sau khi xác thực OTP demo, hệ thống sẽ hiển thị trạng thái và tiến trình đơn hàng.",
+      "Bạn vào mục Tra cứu, nhập số điện thoại đặt hàng. Sau khi xác thực OTP demo, hệ thống sẽ hiển thị trạng thái và tiến trình đơn hàng.",
   },
 ];
 
@@ -99,7 +99,7 @@ export default function FAQsPage() {
 
         <div className="faq-support-actions">
           <Link to="/tra-cuu" className="btn btn-primary">
-            Tra cứu đơn hàng
+            Tra cứu thông tin
           </Link>
 
           <Link to="/complaints" className="btn btn-soft">
