@@ -4,6 +4,7 @@ import PaymentQrModal, { type PaymentSession } from "./PaymentQrModal";
 import {
   Link,
   NavLink,
+  Navigate,
   Route,
   Routes,
   useLocation,
@@ -70,17 +71,10 @@ import {
 } from "./data";
 import MemberPointsPage from "./MemberPointsPage";
 import FAQsPage from "./FAQs";
-import {
-  ORDER_STORAGE_KEY,
-  loadOrders,
-  saveOrders,
-  loadMemberProfile,
-  saveMemberProfile,
-} from "./mockStore";
+import { ORDER_STORAGE_KEY, loadOrders, saveOrders } from "./mockStore";
 import { OrderTrackingPage, OrderHistoryPage } from "./CustomerPages";
 import { ComplaintPage } from "./CustomerPages";
 import { PromotionsPage } from "./CustomerPages";
-import { MembershipPage } from "./CustomerPages";
 
 type Totals = {
   subtotal: number;
@@ -165,27 +159,33 @@ function App() {
   const [branch, setBranch] = useState<Branch | null>(() =>
     readStore("MilktyWay-branch", null),
   );
-  const [memberProfile, setMemberProfile] = useState<MemberProfile | null>(() =>
-    loadMemberProfile(),
-  );
   const [members, setMembers] = useState<MemberProfile[]>(() => {
-    const savedMembers = readStore<MemberProfile[]>(
-      "MilktyWay-members",
-      demoMembers,
-    );
+    const savedMembers = readStore<MemberProfile[]>("MilktyWay-members", []);
 
-    const savedProfile = loadMemberProfile();
+    // demoMembers là danh sách hội viên hợp lệ duy nhất.
+    // localStorage chỉ được dùng để khôi phục điểm và lịch sử
+    // của các hội viên đã có sẵn trong mock data.
 
-    if (
-      savedProfile &&
-      !savedMembers.some((member) => member.phone === savedProfile.phone)
-    ) {
-      return [...savedMembers, savedProfile];
-    }
+    return demoMembers.map((mockMember) => {
+      const savedMember = savedMembers.find(
+        (member) =>
+          member.phone.replace(/\D/g, "") ===
+          mockMember.phone.replace(/\D/g, ""),
+      );
 
-    return savedMembers;
+      if (!savedMember) {
+        return mockMember;
+      }
+
+      return {
+        ...mockMember,
+        ...savedMember,
+
+        // Bảo toàn lịch sử điểm nếu dữ liệu cũ chưa có trường này.
+        pointHistory: savedMember.pointHistory ?? mockMember.pointHistory ?? [],
+      };
+    });
   });
-
   const [usePoints, setUsePoints] = useState(false);
   const [cart, setCart] = useState<CartItem[]>(() =>
     readStore("MilktyWay-cart", []),
@@ -326,13 +326,6 @@ function App() {
   useEffect(() => {
     setBranchOpen(false);
   }, [location.pathname]);
-  useEffect(() => {
-    const saved = saveMemberProfile(memberProfile);
-
-    if (!saved) {
-      setToast("Không thể lưu hồ sơ thành viên.");
-    }
-  }, [memberProfile]);
 
   const selectedItems = useMemo(
     () => cart.filter((item) => item.selected),
@@ -979,45 +972,6 @@ function App() {
     }
   };
 
-  const saveMember = (profile: MemberProfile) => {
-    try {
-      const normalizedPhone = profile.phone.replace(/\D/g, "");
-
-      const nextProfile = {
-        ...profile,
-        phone: normalizedPhone,
-        pointHistory: profile.pointHistory ?? [],
-      };
-
-      setMembers((currentMembers) => {
-        const exists = currentMembers.some(
-          (member) => member.phone === normalizedPhone,
-        );
-
-        if (exists) {
-          return currentMembers.map((member) =>
-            member.phone === normalizedPhone
-              ? {
-                  ...member,
-                  ...nextProfile,
-                }
-              : member,
-          );
-        }
-
-        return [...currentMembers, nextProfile];
-      });
-
-      setMemberProfile(nextProfile);
-      setMemberPhone(normalizedPhone);
-
-      setToast("Đã lưu thông tin hội viên.");
-    } catch (error) {
-      console.error("Lỗi cập nhật hồ sơ thành viên:", error);
-      setToast("Không thể cập nhật thông tin hội viên.");
-    }
-  };
-
   const createComplaint = (
     orderId: string,
     phone: string,
@@ -1165,9 +1119,7 @@ function App() {
           />
           <Route
             path="/membership"
-            element={
-              <MembershipPage profile={memberProfile} onSave={saveMember} />
-            }
+            element={<Navigate to="/member-points" replace />}
           />
           <Route path="/promotions" element={<PromotionsPage />} />
           <Route
@@ -1255,35 +1207,138 @@ function Header({
   branch: Branch | null;
   onBranch: () => void;
 }) {
+  const [lookupOpen, setLookupOpen] = useState(false);
+
+  const lookupRef = useRef<HTMLDivElement>(null);
+
+  const { pathname } = useLocation();
+
+  // Xác định khi người dùng đang ở một trong ba trang tra cứu.
+  const lookupIsActive = ["/orders", "/track", "/member-points"].includes(
+    pathname,
+  );
+
+  // Đóng Dropdown khi nhấn bên ngoài.
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        lookupRef.current &&
+        !lookupRef.current.contains(event.target as Node)
+      ) {
+        setLookupOpen(false);
+      }
+    };
+
+    // Đóng Dropdown khi nhấn ESC.
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setLookupOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  const closeLookup = () => {
+    setLookupOpen(false);
+  };
+
   return (
     <header className="site-header">
       <div className="header-inner">
+        {/* LOGO */}
         <Link to="/" className="brand-lockup">
           <span className="brand-mark">i</span>
+
           <span>
             <b>MilktyWay</b>
             <small>TEA & MOMENTS</small>
           </span>
         </Link>
+
+        {/* MAIN NAVIGATION */}
         <nav className="desktop-nav" aria-label="Điều hướng chính">
-          <NavLink to="/">Trang chủ</NavLink>
+          {/* Trang chủ */}
+          <NavLink to="/" end>
+            Trang chủ
+          </NavLink>
+
+          {/* Thực đơn */}
           <NavLink to="/menu">Thực đơn</NavLink>
-          <NavLink to="/orders">Lịch sử</NavLink>
-          <NavLink to="/track">Tra cứu đơn</NavLink>
+
+          {/* DROPDOWN TRA CỨU */}
+          <div
+            ref={lookupRef}
+            className={`lookup-dropdown ${lookupOpen ? "is-open" : ""}`}
+            onMouseEnter={() => setLookupOpen(true)}
+            onMouseLeave={() => setLookupOpen(false)}
+          >
+            <button
+              type="button"
+              className={`lookup-dropdown-trigger ${
+                lookupIsActive ? "active" : ""
+              }`}
+              aria-expanded={lookupOpen}
+              aria-controls="lookup-dropdown-menu"
+              onClick={() => setLookupOpen(true)}
+            >
+              <span>Tra cứu</span>
+
+              <ChevronDown size={15} className="lookup-chevron" />
+            </button>
+
+            <div
+              id="lookup-dropdown-menu"
+              className="lookup-dropdown-menu"
+              aria-hidden={!lookupOpen}
+            >
+              <NavLink to="/orders" onClick={closeLookup}>
+                <Clock3 size={16} />
+                <span>Lịch sử mua hàng</span>
+              </NavLink>
+
+              <NavLink to="/track" onClick={closeLookup}>
+                <PackageCheck size={16} />
+                <span>Tra cứu đơn hàng</span>
+              </NavLink>
+
+              <NavLink to="/member-points" onClick={closeLookup}>
+                <Gift size={16} />
+                <span>Điểm hội viên</span>
+              </NavLink>
+            </div>
+          </div>
         </nav>
+
+        {/* HEADER ACTIONS */}
         <div className="header-actions">
+          {/* Chọn chi nhánh */}
           <button className="branch-trigger" onClick={onBranch}>
             <MapPin size={16} />
+
             <span>{branch?.name ?? "Chọn chi nhánh"}</span>
+
             <ChevronDown size={15} />
           </button>
+
+          {/* Giỏ hàng */}
           <Link
             to="/cart"
             className="header-cart"
             aria-label={`Giỏ hàng, ${count} sản phẩm`}
           >
             <ShoppingBag size={19} />
+
             <span>Giỏ hàng</span>
+
             {count > 0 && <b>{count}</b>}
           </Link>
         </div>
@@ -1417,10 +1472,9 @@ function Footer() {
           {/* Cột 3 */}
           <section>
             <h3>USEFUL LINKS</h3>
-
-            <Link to="/membership">Your Account</Link>
+            <Link to="/member-points">Tra cứu điểm thưởng</Link>
             <Link to="/orders">Lịch sử mua hàng</Link>
-            <Link to="/member-points">Điểm thưởng hội viên</Link>
+            <Link to="/track">Tra cứu đơn hàng</Link>{" "}
             <Link to="/faqs">Help / FAQs</Link>
           </section>
 

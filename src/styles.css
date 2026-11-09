@@ -4076,7 +4076,7 @@ body {
 
 /* Tầng 2: 4 cột */
 .mw-footer-main {
-  background: #1e2534;
+  background: #E9EEE2;
 }
 
 .mw-footer-columns {
@@ -4097,7 +4097,7 @@ body {
 
 .mw-footer-columns h3 {
   margin: 0 0 9px;
-  color: #ffffff;
+  color: #6E896D;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -4106,13 +4106,13 @@ body {
 .mw-footer-columns p,
 .mw-footer-columns a {
   margin: 0;
-  color: #e1e4ec;
+  color: #2B4033;
   font-size: 11px;
   line-height: 1.7;
 }
 
 .mw-footer-columns a:hover {
-  color: #a99aff;
+  color: #2e6442;
 }
 
 .mw-footer-columns section:first-child p {
@@ -4138,7 +4138,7 @@ body {
   align-items: center;
   gap: 4px;
   padding: 12px 16px;
-  background: #151c2a;
+  background: #2e6442;
   color: #f3f4f7;
   text-align: center;
   font-size: 11px;
@@ -4629,4 +4629,231 @@ body {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* =========================================================
+   CĂN THẲNG HÀNG NGANG PHẦN DÙNG ĐIỂM THƯỞNG THANH TOÁN
+========================================================= */
+
+/* Ép khung chứa hiển thị theo dạng flex hàng ngang */
+.points-redeem-option {
+  display: flex !important;
+  align-items: flex-start !important; /* Căn ô checkbox thẳng hàng với dòng chữ đầu tiên */
+  gap: 12px !important;              /* Tạo khoảng cách vừa phải giữa checkbox và chữ */
+  padding: 14px !important;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* Đảm bảo ô checkbox giữ nguyên kích thước ổn định, không bị méo */
+.points-redeem-option input[type="checkbox"] {
+  flex-shrink: 0 !important;
+  width: 18px !important;
+  height: 18px !important;
+  margin-top: 2px !important;       /* Căn chỉnh nhẹ để checkbox cân đối với dòng tiêu đề */
+  accent-color: var(--brand);       /* Đồng bộ màu xanh của thương hiệu */
+}
+
+/* Định dạng cụm chữ bên phải */
+.points-redeem-option span {
+  display: flex !important;
+  flex-direction: column !important; /* Tiêu đề ở trên, dòng chú thích nhỏ ở dưới */
+  gap: 4px !important;
+  min-width: 0;
+}
+
+.points-redeem-option b {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: #26372f !important;
+}
+
+.points-redeem-option small {
+  font-size: 10px !important;
+  color: #77837a !important;
+}
+
+/* =========================================
+   HEADER LOOKUP DROPDOWN
+   MILKTYWAY
+========================================= */
+
+.lookup-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Nút Tra cứu */
+.lookup-dropdown-trigger {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 9px 0;
+
+  border: 0;
+  background: transparent;
+
+  color: #58665c;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+
+  cursor: pointer;
+  white-space: nowrap;
+
+  transition:
+    color 0.2s ease,
+    font-weight 0.2s ease;
+}
+
+/* Hover và Active */
+.lookup-dropdown-trigger:hover,
+.lookup-dropdown-trigger.active {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+/* Gạch chân khi đang đứng ở trang thuộc nhóm Tra cứu */
+.lookup-dropdown-trigger.active::after {
+  content: "";
+
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  height: 2px;
+
+  background: var(--brand);
+  border-radius: 3px;
+}
+
+/* Icon mũi tên */
+.lookup-chevron {
+  flex-shrink: 0;
+
+  transition: transform 0.22s ease;
+}
+
+.lookup-dropdown.is-open .lookup-chevron {
+  transform: rotate(180deg);
+}
+
+/* =========================================
+   DROPDOWN MENU
+========================================= */
+
+.lookup-dropdown-menu {
+  position: absolute;
+
+  top: 100%;
+  left: -14px;
+
+  z-index: 60;
+
+  width: 235px;
+
+  display: grid;
+  gap: 3px;
+
+  padding: 8px;
+
+  background: #ffffff;
+
+  border: 1px solid var(--line);
+  border-radius: 12px;
+
+  box-shadow:
+    0 12px 30px rgba(35, 58, 41, 0.13);
+
+  /* Trạng thái đóng */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  transform: translateY(8px);
+
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s ease;
+}
+
+/* Trạng thái mở */
+.lookup-dropdown.is-open .lookup-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+
+  transform: translateY(0);
+}
+
+/* =========================================
+   DROPDOWN LINKS
+========================================= */
+
+.lookup-dropdown-menu a {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 11px 12px;
+
+  border-radius: 8px;
+
+  color: #58665c;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  white-space: nowrap;
+
+  position: static;
+
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+}
+
+/* Icon trong Dropdown */
+.lookup-dropdown-menu a svg {
+  flex-shrink: 0;
+  color: #829080;
+}
+
+/* Hover */
+.lookup-dropdown-menu a:hover {
+  background: #eff4ec;
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.lookup-dropdown-menu a:hover svg {
+  color: var(--brand);
+}
+
+/* Đánh dấu trang đang truy cập */
+.lookup-dropdown-menu a.active {
+  background: #edf4eb;
+  color: var(--brand);
+  font-weight: 700;
+}
+
+/* Bỏ gạch chân mặc định của NavLink active */
+.lookup-dropdown-menu a.active::after {
+  display: none;
+  content: none;
+}
+
+/* Focus bằng bàn phím */
+.lookup-dropdown-trigger:focus-visible,
+.lookup-dropdown-menu a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
 }
