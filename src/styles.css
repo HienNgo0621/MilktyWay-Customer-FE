@@ -989,7 +989,6 @@ textarea:focus-visible {
   gap: 12px;
 }
 .summary-card,
-.coupon-card,
 .checkout-items-card,
 .form-card,
 .account-panel {
@@ -999,7 +998,6 @@ textarea:focus-visible {
   padding: 19px;
 }
 .summary-card h2,
-.coupon-card h3,
 .checkout-items-card h2 {
   font-size: 14px;
   margin: 0 0 17px;
@@ -1040,40 +1038,6 @@ textarea:focus-visible {
   font-size: 9px;
   color: #929d91;
   margin: 13px 0 0;
-}
-.coupon-card {
-  padding: 16px;
-}
-.coupon-card h3 {
-  margin-bottom: 11px;
-}
-.coupon-input-row {
-  display: flex;
-  gap: 7px;
-}
-.coupon-input-row input {
-  min-width: 0;
-  flex: 1;
-  height: 40px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 0 10px;
-  font-size: 11px;
-}
-.coupon-input-row button {
-  border: 0;
-  border-radius: 9px;
-  background: #eaf1e8;
-  color: var(--brand);
-  font-size: 10px;
-  font-weight: 700;
-  padding: 0 12px;
-}
-.coupon-card > small {
-  display: block;
-  font-size: 9px;
-  color: #99a198;
-  margin-top: 9px;
 }
 .success-message,
 .error-message {
@@ -2138,9 +2102,6 @@ textarea:focus-visible {
     gap: 5px;
   }
   .summary-card,
-  .coupon-card {
-    padding: 15px;
-  }
   .account-guest-layout {
     gap: 14px;
   }
@@ -2601,9 +2562,6 @@ textarea:focus-visible {
   }
   .cart-page {
     padding-bottom: 135px;
-  }
-  .coupon-card {
-    padding: 13px;
   }
   .summary-card {
     padding: 15px;
@@ -3819,9 +3777,9 @@ body {
   border-radius: 10px;
 }
 
-/* 5 mục điều hướng trên điện thoại */
+/* 4 mục điều hướng trên điện thoại */
 .mobile-bottom-nav {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .mobile-nav-item {
@@ -4076,7 +4034,7 @@ body {
 
 /* Tầng 2: 4 cột */
 .mw-footer-main {
-  background: #E9EEE2;
+  background: #e9eee2;
 }
 
 .mw-footer-columns {
@@ -4097,7 +4055,7 @@ body {
 
 .mw-footer-columns h3 {
   margin: 0 0 9px;
-  color: #6E896D;
+  color: #6e896d;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -4106,7 +4064,7 @@ body {
 .mw-footer-columns p,
 .mw-footer-columns a {
   margin: 0;
-  color: #2B4033;
+  color: #2b4033;
   font-size: 11px;
   line-height: 1.7;
 }
@@ -4504,7 +4462,9 @@ body {
   border: 1px solid #e4e9e1;
   border-radius: 13px;
 
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .faq-item.is-open {
@@ -4639,7 +4599,7 @@ body {
 .points-redeem-option {
   display: flex !important;
   align-items: flex-start !important; /* Căn ô checkbox thẳng hàng với dòng chữ đầu tiên */
-  gap: 12px !important;              /* Tạo khoảng cách vừa phải giữa checkbox và chữ */
+  gap: 12px !important; /* Tạo khoảng cách vừa phải giữa checkbox và chữ */
   padding: 14px !important;
   cursor: pointer;
   width: 100%;
@@ -4650,8 +4610,8 @@ body {
   flex-shrink: 0 !important;
   width: 18px !important;
   height: 18px !important;
-  margin-top: 2px !important;       /* Căn chỉnh nhẹ để checkbox cân đối với dòng tiêu đề */
-  accent-color: var(--brand);       /* Đồng bộ màu xanh của thương hiệu */
+  margin-top: 2px !important; /* Căn chỉnh nhẹ để checkbox cân đối với dòng tiêu đề */
+  accent-color: var(--brand); /* Đồng bộ màu xanh của thương hiệu */
 }
 
 /* Định dạng cụm chữ bên phải */
@@ -4674,186 +4634,264 @@ body {
 }
 
 /* =========================================
-   HEADER LOOKUP DROPDOWN
-   MILKTYWAY
+   TRA CUU - UNIFIED LOOKUP PAGE
 ========================================= */
 
-.lookup-dropdown {
-  position: relative;
-  display: flex;
-  align-items: center;
+.tra-cuu-page {
+  display: grid;
+  gap: 20px;
 }
 
-/* Nút Tra cứu */
-.lookup-dropdown-trigger {
-  position: relative;
+/* Form tìm kiếm */
+.tra-cuu-search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+}
 
+.tra-cuu-search-form label {
+  display: grid;
+  gap: 8px;
+  color: #46574a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tra-cuu-search-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fcfdfb;
+  font-size: 12px;
+}
+
+.tra-cuu-search-form .btn {
+  min-width: 135px;
+}
+
+/* Khung thông tin hội viên */
+.tra-cuu-member-card {
+  background: linear-gradient(130deg, #edf5e9, #ffffff);
+  border: 1px solid #dce9d9;
+}
+
+.tra-cuu-member-card h2 {
+  margin: 9px 0 4px;
+  color: #2d5139;
+  font-size: 19px;
+}
+
+.tra-cuu-member-card > .feature-heading-row p {
+  margin: 0;
+  color: #809082;
+  font-size: 11px;
+}
+
+.tra-cuu-tier-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-
-  padding: 9px 0;
-
-  border: 0;
-  background: transparent;
-
-  color: #58665c;
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: 500;
-
-  cursor: pointer;
-  white-space: nowrap;
-
-  transition:
-    color 0.2s ease,
-    font-weight 0.2s ease;
+  justify-content: center;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: #e0c78d;
+  color: #69501f;
+  font-size: 10px;
+  font-weight: 800;
 }
 
-/* Hover và Active */
-.lookup-dropdown-trigger:hover,
-.lookup-dropdown-trigger.active {
-  color: var(--brand);
-  font-weight: 700;
+/* Lịch sử điểm */
+.tra-cuu-point-history {
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid #dce9d9;
 }
 
-/* Gạch chân khi đang đứng ở trang thuộc nhóm Tra cứu */
-.lookup-dropdown-trigger.active::after {
-  content: "";
-
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-
-  height: 2px;
-
-  background: var(--brand);
-  border-radius: 3px;
+.tra-cuu-point-history h3 {
+  margin: 0;
+  font-size: 13px;
 }
 
-/* Icon mũi tên */
-.lookup-chevron {
-  flex-shrink: 0;
-
-  transition: transform 0.22s ease;
+.tra-cuu-point-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9eee7;
 }
 
-.lookup-dropdown.is-open .lookup-chevron {
-  transform: rotate(180deg);
+.tra-cuu-point-row:last-child {
+  border-bottom: 0;
 }
 
-/* =========================================
-   DROPDOWN MENU
-========================================= */
-
-.lookup-dropdown-menu {
-  position: absolute;
-
-  top: 100%;
-  left: -14px;
-
-  z-index: 60;
-
-  width: 235px;
-
+.tra-cuu-point-row > div {
+  min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 5px;
+}
 
-  padding: 8px;
+.tra-cuu-point-row b {
+  color: #34483a;
+  font-size: 11px;
+}
 
-  background: #ffffff;
+.tra-cuu-point-row small {
+  color: #879388;
+  font-size: 9px;
+}
 
-  border: 1px solid var(--line);
+.tra-cuu-point-row > strong {
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* Khu vực danh sách đơn hàng */
+.tra-cuu-orders-card {
+  display: grid;
+  gap: 16px;
+}
+
+.tra-cuu-orders-card h2 {
+  margin: 0;
+  color: #304638;
+  font-size: 18px;
+}
+
+/* Ba tab lọc đơn */
+.tra-cuu-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 5px;
+  background: #f1f4ef;
   border-radius: 12px;
-
-  box-shadow:
-    0 12px 30px rgba(35, 58, 41, 0.13);
-
-  /* Trạng thái đóng */
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-
-  transform: translateY(8px);
-
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease,
-    visibility 0.2s ease;
 }
 
-/* Trạng thái mở */
-.lookup-dropdown.is-open .lookup-dropdown-menu {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-
-  transform: translateY(0);
-}
-
-/* =========================================
-   DROPDOWN LINKS
-========================================= */
-
-.lookup-dropdown-menu a {
-  width: 100%;
-
+.tra-cuu-tab {
+  min-width: 0;
+  min-height: 44px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 10px;
 
-  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
 
-  border-radius: 8px;
-
-  color: #58665c;
-
-  font-size: 12px;
-  font-weight: 500;
-
-  white-space: nowrap;
-
-  position: static;
+  color: #758177;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
 
   transition:
-    background 0.18s ease,
-    color 0.18s ease;
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-/* Icon trong Dropdown */
-.lookup-dropdown-menu a svg {
-  flex-shrink: 0;
-  color: #829080;
+.tra-cuu-tab > span {
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e2e9df;
+  color: #6d7d6e;
+  font-size: 9px;
 }
 
-/* Hover */
-.lookup-dropdown-menu a:hover {
-  background: #eff4ec;
+.tra-cuu-tab:hover {
   color: var(--brand);
-  font-weight: 700;
 }
 
-.lookup-dropdown-menu a:hover svg {
+.tra-cuu-tab.active {
+  background: #ffffff;
+  border-color: #dce8da;
+  color: var(--brand);
+  box-shadow: 0 2px 7px rgba(40, 80, 50, 0.06);
+}
+
+.tra-cuu-tab.active > span {
+  background: #e6f0e4;
   color: var(--brand);
 }
 
-/* Đánh dấu trang đang truy cập */
-.lookup-dropdown-menu a.active {
-  background: #edf4eb;
-  color: var(--brand);
-  font-weight: 700;
+/* Danh sách đơn */
+.tra-cuu-order-list {
+  display: grid;
+  gap: 12px;
 }
 
-/* Bỏ gạch chân mặc định của NavLink active */
-.lookup-dropdown-menu a.active::after {
-  display: none;
-  content: none;
+.tra-cuu-order-card {
+  margin: 0;
+  padding: 15px;
+  border-radius: 12px;
 }
 
-/* Focus bằng bàn phím */
-.lookup-dropdown-trigger:focus-visible,
-.lookup-dropdown-menu a:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 3px;
+.tra-cuu-order-card .feature-heading-row > div {
+  display: grid;
+  gap: 5px;
+}
+
+.tra-cuu-order-card .feature-heading-row > div > b {
+  color: #34483a;
+  font-size: 12px;
+}
+
+.tra-cuu-order-card .feature-heading-row small {
+  color: #859186;
+  font-size: 9px;
+}
+
+/* Modal trong trang Tra cứu */
+.tra-cuu-order-modal {
+  width: min(100%, 760px);
+}
+
+.tra-cuu-order-modal > h3 {
+  color: #34483a;
+  font-size: 13px;
+}
+
+.tra-cuu-order-modal .feature-info-grid {
+  margin: 14px 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .tra-cuu-search-form {
+    grid-template-columns: 1fr;
+  }
+
+  .tra-cuu-search-form .btn {
+    width: 100%;
+  }
+
+  .tra-cuu-tabs {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .tra-cuu-tab {
+    flex-direction: column;
+    gap: 4px;
+    min-height: 58px;
+    padding: 7px 3px;
+    font-size: 9px;
+  }
+
+  .tra-cuu-order-card {
+    padding: 12px;
+  }
+
+  .tra-cuu-member-card h2 {
+    font-size: 16px;
+  }
 }

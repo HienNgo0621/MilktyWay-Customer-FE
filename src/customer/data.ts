@@ -101,25 +101,9 @@ export type MemberProfile = {
   email: string;
   points: number;
   tier: MemberTier;
-  discountPercent: number;
   joinedAt: string;
 
   pointHistory?: MemberPointTransaction[];
-};
-
-export type Promotion = {
-  id: string;
-  name: string;
-  description: string;
-  code: string;
-  discountType: "PERCENT" | "FIXED";
-  discountValue: number;
-  minimumOrder: number;
-  maximumDiscount: number;
-  startDate: string;
-  endDate: string;
-  memberOnly: boolean;
-  active: boolean;
 };
 
 export type Order = {
@@ -356,37 +340,6 @@ export const availableAt = (branch: Branch | null, productId: number) => {
   return ingredients.every((id) => !branch.unavailable.includes(id));
 };
 
-export const demoPromotions: Promotion[] = [
-  {
-    id: "PROMO-001",
-    name: "Chào bạn mới",
-    description: "Giảm 10% cho đơn hàng từ 100.000đ.",
-    code: "CHAO10",
-    discountType: "PERCENT",
-    discountValue: 10,
-    minimumOrder: 100000,
-    maximumDiscount: 30000,
-    startDate: "2026-01-01",
-    endDate: "2026-12-31",
-    memberOnly: false,
-    active: true,
-  },
-  {
-    id: "PROMO-002",
-    name: "Ưu đãi thành viên",
-    description: "Ưu đãi dành riêng cho thành viên MilktyWay.",
-    code: "MEMBER10",
-    discountType: "PERCENT",
-    discountValue: 10,
-    minimumOrder: 0,
-    maximumDiscount: 50000,
-    startDate: "2026-01-01",
-    endDate: "2026-12-31",
-    memberOnly: true,
-    active: true,
-  },
-];
-
 export const demoMembers: MemberProfile[] = [
   {
     id: "MEMBER-DEMO-001",
@@ -395,7 +348,6 @@ export const demoMembers: MemberProfile[] = [
     email: "demo@milktyway.test",
     points: 1250,
     tier: "GOLD",
-    discountPercent: 10,
     joinedAt: "2026-01-01",
     pointHistory: [
       {

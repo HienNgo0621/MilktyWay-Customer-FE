@@ -98,7 +98,7 @@ export default function FAQsPage() {
         </p>
 
         <div className="faq-support-actions">
-          <Link to="/track" className="btn btn-primary">
+          <Link to="/tra-cuu" className="btn btn-primary">
             Tra cứu đơn hàng
           </Link>
 

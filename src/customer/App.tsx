@@ -2,6 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import PaymentQrModal, { type PaymentSession } from "./PaymentQrModal";
 import {
+  ORDER_STORAGE_KEY,
+  loadOrders,
+  saveOrders,
+} from "./mockStore";
+import {
   Link,
   NavLink,
   Navigate,
@@ -69,17 +74,13 @@ import {
   type PaymentMethod,
   type MemberProfile,
 } from "./data";
-import MemberPointsPage from "./MemberPointsPage";
+import TraCuuPage from "./TraCuuPage";
 import FAQsPage from "./FAQs";
-import { ORDER_STORAGE_KEY, loadOrders, saveOrders } from "./mockStore";
-import { OrderTrackingPage, OrderHistoryPage } from "./CustomerPages";
 import { ComplaintPage } from "./CustomerPages";
-import { PromotionsPage } from "./CustomerPages";
 
 type Totals = {
   subtotal: number;
   loyalty: number;
-  discount: number;
   shipping: number;
   pointsUsed: number;
   pointsDiscount: number;
@@ -96,7 +97,6 @@ const readStore = <T,>(key: string, fallback: T): T => {
 const getTotals = (
   items: CartItem[],
   member: MemberProfile | null,
-  code: string,
   usePoints: boolean,
 ): Totals => {
   const subtotal = items.reduce(
@@ -104,23 +104,16 @@ const getTotals = (
     0,
   );
 
-  // Hội viên hợp lệ được giảm cố định 3.000đ.
+  // Hội viên hợp lệ được giảm trực tiếp 3.000đ.
   const loyalty = member ? Math.min(3000, subtotal) : 0;
 
-  const discount =
-    code === "CHAO10" && subtotal >= 100000
-      ? Math.min(30000, Math.floor((subtotal - loyalty) * 0.1))
-      : 0;
-
+  // Giữ nguyên chính sách giao hàng hiện tại.
   const shipping = subtotal === 0 || subtotal >= 150000 ? 0 : 15000;
 
-  const totalBeforePoints = Math.max(
-    0,
-    subtotal - loyalty - discount + shipping,
-  );
+  // Không còn cộng discount từ mã voucher.
+  const totalBeforePoints = Math.max(0, subtotal - loyalty + shipping);
 
   // 1 điểm = 1.000đ.
-  // Không cho dùng nhiều điểm hơn số dư hoặc số tiền cần trả.
   const pointsUsed =
     member && usePoints
       ? Math.min(member.points, Math.floor(totalBeforePoints / 1000))
@@ -133,10 +126,9 @@ const getTotals = (
   return {
     subtotal,
     loyalty,
-    discount,
+    shipping,
     pointsUsed,
     pointsDiscount,
-    shipping,
     total,
   };
 };
@@ -237,7 +229,6 @@ function App() {
 
     return updatedOrder;
   };
-  const [couponInput, setCouponInput] = useState("");
   const [memberPhone, setMemberPhone] = useState(() =>
     readStore("MilktyWay-member-phone", ""),
   );
@@ -247,8 +238,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem("MilktyWay-member-phone", JSON.stringify(memberPhone));
   }, [memberPhone]);
-  const [couponCode, setCouponCode] = useState("");
-  const [couponMessage, setCouponMessage] = useState("");
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [editingItem, setEditingItem] = useState<CartItem | null>(null);
   const [branchOpen, setBranchOpen] = useState(false);
@@ -343,7 +332,7 @@ function App() {
       (item) => item.phone.replace(/\D/g, "") === normalizedMemberPhone,
     ) ?? null;
 
-  const totals = getTotals(selectedItems, matchedMember, couponCode, usePoints);
+  const totals = getTotals(selectedItems, matchedMember, usePoints);
   useEffect(() => {
     if (!matchedMember) {
       setUsePoints(false);
@@ -366,9 +355,6 @@ function App() {
       );
       if (!confirmed) return;
       setCart([]);
-      setCouponCode("");
-      setCouponInput("");
-      setCouponMessage("");
     }
     setBranch(next);
     setBranchOpen(false);
@@ -401,15 +387,15 @@ function App() {
         items.map((item) =>
           item.id === editingItem.id
             ? {
-                ...item,
-                size,
-                sugar,
-                ice,
-                toppings,
-                detail,
-                unitPrice,
-                quantity,
-              }
+              ...item,
+              size,
+              sugar,
+              ice,
+              toppings,
+              detail,
+              unitPrice,
+              quantity,
+            }
             : item,
         ),
       );
@@ -461,30 +447,12 @@ function App() {
   };
   const removeItem = (id: string) =>
     setCart((items) => items.filter((item) => item.id !== id));
-  const applyCoupon = () => {
-    const value = couponInput.trim().toUpperCase();
-    if (value === "CHAO10" && totals.subtotal >= 100000) {
-      setCouponCode(value);
-      setCouponMessage("Đã áp dụng ưu đãi 10%, tối đa 30.000đ.");
-    } else {
-      setCouponCode("");
-      setCouponMessage(
-        value === "CHAO10"
-          ? "Đơn hàng cần đạt tối thiểu 100.000đ."
-          : "Mã giảm giá không hợp lệ.",
-      );
-    }
-  };
   const finishCheckout = (order: Order) => {
     // Chỉ xóa sản phẩm sau khi đặt COD
     // hoặc thanh toán online thành công.
     setCart((items) => items.filter((item) => !item.selected));
 
     setLastOrder(order);
-
-    setCouponCode("");
-    setCouponInput("");
-    setCouponMessage("");
 
     setPaymentMethod("COD");
     setPaymentSession(null);
@@ -521,7 +489,7 @@ function App() {
 
         subtotal: totals.subtotal,
 
-        discount: totals.loyalty + totals.discount + totals.pointsDiscount,
+        discount: totals.loyalty + totals.pointsDiscount,
 
         shipping: totals.shipping,
         total: totals.total,
@@ -780,13 +748,13 @@ function App() {
           statusHistory:
             type === "CANCEL"
               ? [
-                  ...currentOrder.statusHistory,
-                  {
-                    status: "CANCEL_REQUESTED",
-                    at: now,
-                    note: "Khách hàng đã gửi yêu cầu hủy đơn.",
-                  },
-                ]
+                ...currentOrder.statusHistory,
+                {
+                  status: "CANCEL_REQUESTED",
+                  at: now,
+                  note: "Khách hàng đã gửi yêu cầu hủy đơn.",
+                },
+              ]
               : currentOrder.statusHistory,
         };
       });
@@ -917,13 +885,13 @@ function App() {
         const updatedActionRequests =
           nextStatus === "CANCELLED"
             ? currentOrder.actionRequests.map((request) =>
-                request.type === "CANCEL" && request.requestStatus === "PENDING"
-                  ? {
-                      ...request,
-                      requestStatus: "APPROVED" as const,
-                    }
-                  : request,
-              )
+              request.type === "CANCEL" && request.requestStatus === "PENDING"
+                ? {
+                  ...request,
+                  requestStatus: "APPROVED" as const,
+                }
+                : request,
+            )
             : currentOrder.actionRequests;
 
         const statusNote =
@@ -957,8 +925,7 @@ function App() {
       }
 
       setToast(
-        `Đã chuyển trạng thái: ${
-          statusNotes[nextStatus] ?? "Trạng thái đơn hàng đã được cập nhật."
+        `Đã chuyển trạng thái: ${statusNotes[nextStatus] ?? "Trạng thái đơn hàng đã được cập nhật."
         }`,
       );
 
@@ -1025,123 +992,153 @@ function App() {
         onBranch={() => setBranchOpen(true)}
       />
       <main className="page-shell">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <HomePage
-                branch={branch}
-                onChooseBranch={() => setBranchOpen(true)}
-                onPick={openProduct}
-              />
-            }
-          />
-          <Route
-            path="/menu"
-            element={
-              <MenuPage
-                branch={branch}
-                onChooseBranch={() => setBranchOpen(true)}
-                onPick={openProduct}
-              />
-            }
-          />
-          <Route
-            path="/cart"
-            element={
-              <CartPage
-                branch={branch}
-                onPick={openProduct}
-                cart={cart}
-                selectedCount={selectedCount}
-                totals={totals}
-                couponInput={couponInput}
-                couponMessage={couponMessage}
-                onCouponInput={setCouponInput}
-                onApplyCoupon={applyCoupon}
-                onToggle={toggleItem}
-                onToggleAll={toggleAll}
-                onQuantity={updateQuantity}
-                onRemove={removeItem}
-                onEdit={(item) => {
-                  setEditingItem(item);
-                  setProductToEdit(
-                    products.find((p) => p.id === item.productId) ?? null,
-                  );
-                }}
-                onCheckout={() => navigate("/checkout")}
-                onShop={() => navigate("/menu")}
-              />
-            }
-          />
+        <Route
+          path="/"
+          element={
+            <HomePage
+              branch={branch}
+              onChooseBranch={() => setBranchOpen(true)}
+              onPick={openProduct}
+            />
+          }
+        />
+        <Route
+          path="/menu"
+          element={
+            <MenuPage
+              branch={branch}
+              onChooseBranch={() => setBranchOpen(true)}
+              onPick={openProduct}
+            />
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            <CartPage
+              branch={branch}
+              onPick={openProduct}
+              cart={cart}
+              selectedCount={selectedCount}
+              totals={totals}
+              onToggle={toggleItem}
+              onToggleAll={toggleAll}
+              onQuantity={updateQuantity}
+              onRemove={removeItem}
+              onEdit={(item) => {
+                setEditingItem(item);
+                setProductToEdit(
+                  products.find((p) => p.id === item.productId) ?? null,
+                );
+              }}
+              onCheckout={() => navigate("/checkout")}
+              onShop={() => navigate("/menu")}
+            />
+          }
+        />
 
-          <Route
-            path="/checkout"
-            element={
-              <CheckoutPage
-                branch={branch}
-                items={selectedItems}
-                count={selectedCount}
-                totals={totals}
-                memberPhone={memberPhone}
-                onMemberPhone={setMemberPhone}
-                matchedMember={matchedMember}
-                usePoints={usePoints}
-                onUsePoints={setUsePoints}
-                paymentMethod={paymentMethod}
-                onPaymentMethod={setPaymentMethod}
-                onSubmit={submitOrder}
-                onBack={() => navigate("/cart")}
-              />
-            }
-          />
-          <Route
-            path="/confirmation"
-            element={
-              <ConfirmationPage
-                order={lastOrder}
-                onShop={() => navigate("/menu")}
-                onBackToCheckout={() => navigate("/checkout")}
-              />
-            }
-          />
-          <Route path="/faqs" element={<FAQsPage />} />
-          <Route
-            path="/track"
-            element={
-              <OrderTrackingPage
-                orders={orders}
-                onRequestAction={requestOrderAction}
-                onAdvanceOrderStatus={advanceOrderStatus}
-                demoMode={import.meta.env.DEV}
-              />
-            }
-          />
-          <Route
-            path="/membership"
-            element={<Navigate to="/member-points" replace />}
-          />
-          <Route path="/promotions" element={<PromotionsPage />} />
-          <Route
-            path="/orders"
-            element={<OrderHistoryPage orders={orders} />}
-          />
-          <Route
-            path="/member-points"
-            element={<MemberPointsPage members={members} />}
-          />
-          <Route path="*" element={<NotFound />} />
+        <Route
+          path="/checkout"
+          element={
+            <CheckoutPage
+              branch={branch}
+              items={selectedItems}
+              count={selectedCount}
+              totals={totals}
+              memberPhone={memberPhone}
+              onMemberPhone={setMemberPhone}
+              matchedMember={matchedMember}
+              usePoints={usePoints}
+              onUsePoints={setUsePoints}
+              paymentMethod={paymentMethod}
+              onPaymentMethod={setPaymentMethod}
+              onSubmit={submitOrder}
+              onBack={() => navigate("/cart")}
+            />
+          }
+        />
+        <Route
+          path="/confirmation"
+          element={
+            <ConfirmationPage
+              order={lastOrder}
+              onShop={() => navigate("/menu")}
+              onBackToCheckout={() => navigate("/checkout")}
+            />
+          }
+        />
+        {/* FAQ */}
+        <Route
+          path="/faqs"
+          element={<FAQsPage />}
+        />
 
-          <Route
-            path="/complaints"
-            element={
-              <ComplaintPage
-                orders={orders}
-                onCreateComplaint={createComplaint}
-              />
-            }
-          />
-        </Routes>
+        {/* TRANG TRA CỨU TÍCH HỢP */}
+        <Route
+          path="/tra-cuu"
+          element={
+            <TraCuuPage
+              orders={orders}
+              members={members}
+              onRequestAction={requestOrderAction}
+              onAdvanceOrderStatus={advanceOrderStatus}
+              demoMode={import.meta.env.DEV}
+            />
+          }
+        />
+
+        {/* CHUYỂN HƯỚNG ROUTE CŨ */}
+        <Route
+          path="/orders"
+          element={
+            <Navigate to="/tra-cuu" replace />
+          }
+        />
+
+        <Route
+          path="/track"
+          element={
+            <Navigate to="/tra-cuu" replace />
+          }
+        />
+
+        <Route
+          path="/member-points"
+          element={
+            <Navigate to="/tra-cuu" replace />
+          }
+        />
+
+        <Route
+          path="/membership"
+          element={
+            <Navigate to="/tra-cuu" replace />
+          }
+        />
+
+        {/* Không còn trang voucher / khuyến mãi */}
+        <Route
+          path="/promotions"
+          element={
+            <Navigate to="/menu" replace />
+          }
+        />
+
+        {/* Khiếu nại vẫn là chức năng độc lập */}
+        <Route
+          path="/complaints"
+          element={
+            <ComplaintPage
+              orders={orders}
+              onCreateComplaint={createComplaint}
+            />
+          }
+        />
+        {/* Trang không tìm thấy */}
+        <Route
+          path="*"
+          element={<NotFound />}
+        />
       </main>
       <BottomNav count={count} />
       <Footer />
@@ -1198,6 +1195,7 @@ function App() {
   );
 }
 
+
 function Header({
   count,
   branch,
@@ -1207,54 +1205,11 @@ function Header({
   branch: Branch | null;
   onBranch: () => void;
 }) {
-  const [lookupOpen, setLookupOpen] = useState(false);
-
-  const lookupRef = useRef<HTMLDivElement>(null);
-
-  const { pathname } = useLocation();
-
-  // Xác định khi người dùng đang ở một trong ba trang tra cứu.
-  const lookupIsActive = ["/orders", "/track", "/member-points"].includes(
-    pathname,
-  );
-
-  // Đóng Dropdown khi nhấn bên ngoài.
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (
-        lookupRef.current &&
-        !lookupRef.current.contains(event.target as Node)
-      ) {
-        setLookupOpen(false);
-      }
-    };
-
-    // Đóng Dropdown khi nhấn ESC.
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setLookupOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-
-  const closeLookup = () => {
-    setLookupOpen(false);
-  };
-
   return (
     <header className="site-header">
       <div className="header-inner">
-        {/* LOGO */}
+
+        {/* Logo */}
         <Link to="/" className="brand-lockup">
           <span className="brand-mark">i</span>
 
@@ -1264,72 +1219,41 @@ function Header({
           </span>
         </Link>
 
-        {/* MAIN NAVIGATION */}
-        <nav className="desktop-nav" aria-label="Điều hướng chính">
-          {/* Trang chủ */}
+        {/* Điều hướng chính */}
+        <nav
+          className="desktop-nav"
+          aria-label="Điều hướng chính"
+        >
           <NavLink to="/" end>
             Trang chủ
           </NavLink>
 
-          {/* Thực đơn */}
-          <NavLink to="/menu">Thực đơn</NavLink>
+          <NavLink to="/menu">
+            Thực đơn
+          </NavLink>
 
-          {/* DROPDOWN TRA CỨU */}
-          <div
-            ref={lookupRef}
-            className={`lookup-dropdown ${lookupOpen ? "is-open" : ""}`}
-            onMouseEnter={() => setLookupOpen(true)}
-            onMouseLeave={() => setLookupOpen(false)}
-          >
-            <button
-              type="button"
-              className={`lookup-dropdown-trigger ${
-                lookupIsActive ? "active" : ""
-              }`}
-              aria-expanded={lookupOpen}
-              aria-controls="lookup-dropdown-menu"
-              onClick={() => setLookupOpen(true)}
-            >
-              <span>Tra cứu</span>
-
-              <ChevronDown size={15} className="lookup-chevron" />
-            </button>
-
-            <div
-              id="lookup-dropdown-menu"
-              className="lookup-dropdown-menu"
-              aria-hidden={!lookupOpen}
-            >
-              <NavLink to="/orders" onClick={closeLookup}>
-                <Clock3 size={16} />
-                <span>Lịch sử mua hàng</span>
-              </NavLink>
-
-              <NavLink to="/track" onClick={closeLookup}>
-                <PackageCheck size={16} />
-                <span>Tra cứu đơn hàng</span>
-              </NavLink>
-
-              <NavLink to="/member-points" onClick={closeLookup}>
-                <Gift size={16} />
-                <span>Điểm hội viên</span>
-              </NavLink>
-            </div>
-          </div>
+          <NavLink to="/tra-cuu">
+            Tra cứu
+          </NavLink>
         </nav>
 
-        {/* HEADER ACTIONS */}
+        {/* Thao tác bên phải */}
         <div className="header-actions">
-          {/* Chọn chi nhánh */}
-          <button className="branch-trigger" onClick={onBranch}>
+
+          <button
+            className="branch-trigger"
+            type="button"
+            onClick={onBranch}
+          >
             <MapPin size={16} />
 
-            <span>{branch?.name ?? "Chọn chi nhánh"}</span>
+            <span>
+              {branch?.name ?? "Chọn chi nhánh"}
+            </span>
 
             <ChevronDown size={15} />
           </button>
 
-          {/* Giỏ hàng */}
           <Link
             to="/cart"
             className="header-cart"
@@ -1341,6 +1265,7 @@ function Header({
 
             {count > 0 && <b>{count}</b>}
           </Link>
+
         </div>
       </div>
     </header>
@@ -1351,11 +1276,9 @@ function BottomNav({ count }: { count: number }) {
   const items = [
     { to: "/", label: "Trang chủ", icon: Home, end: true },
     { to: "/menu", label: "Thực đơn", icon: Coffee },
-    { to: "/orders", label: "Lịch sử", icon: Clock3 },
-    { to: "/track", label: "Tra cứu", icon: PackageCheck },
+    { to: "/tra-cuu", label: "Tra cứu", icon: Search },
     { to: "/cart", label: "Giỏ hàng", icon: ShoppingBag, count },
-  ];
-  return (
+  ]; return (
     <nav className="mobile-bottom-nav" aria-label="Điều hướng trên điện thoại">
       {items.map((item) => (
         <NavLink
@@ -1472,12 +1395,19 @@ function Footer() {
           {/* Cột 3 */}
           <section>
             <h3>USEFUL LINKS</h3>
-            <Link to="/member-points">Tra cứu điểm thưởng</Link>
-            <Link to="/orders">Lịch sử mua hàng</Link>
-            <Link to="/track">Tra cứu đơn hàng</Link>{" "}
-            <Link to="/faqs">Help / FAQs</Link>
-          </section>
 
+            <Link to="/tra-cuu">
+              Tra cứu thông tin
+            </Link>
+
+            <Link to="/faqs">
+              Help / FAQs
+            </Link>
+
+            <Link to="/complaints">
+              Hỗ trợ / Khiếu nại
+            </Link>
+          </section>
           {/* Cột 4 */}
           <section>
             <h3>CONTACT</h3>
@@ -2189,12 +2119,6 @@ function OrderSummary({
           <b>−{money(totals.loyalty)}</b>
         </div>
       )}
-      {totals.discount > 0 && (
-        <div className="summary-line discount">
-          <span>Ưu đãi CHAO10</span>
-          <b>−{money(totals.discount)}</b>
-        </div>
-      )}
       {totals.pointsDiscount > 0 && (
         <div className="summary-line discount">
           <span>Đổi {totals.pointsUsed.toLocaleString("vi-VN")} điểm</span>
@@ -2222,10 +2146,6 @@ function CartPage(props: {
   cart: CartItem[];
   selectedCount: number;
   totals: Totals;
-  couponInput: string;
-  couponMessage: string;
-  onCouponInput: (v: string) => void;
-  onApplyCoupon: () => void;
   onToggle: (id: string) => void;
   onToggleAll: () => void;
   onQuantity: (id: string, delta: number) => void;
@@ -2334,30 +2254,6 @@ function CartPage(props: {
               ))}
             </div>
             <aside className="cart-summary-column">
-              <section className="coupon-card">
-                <h3>Mã ưu đãi</h3>
-                <div className="coupon-input-row">
-                  <input
-                    value={props.couponInput}
-                    onChange={(e) => props.onCouponInput(e.target.value)}
-                    placeholder="Nhập mã giảm giá"
-                    aria-label="Mã giảm giá"
-                  />
-                  <button onClick={props.onApplyCoupon}>Áp dụng</button>
-                </div>
-                {props.couponMessage && (
-                  <p
-                    className={
-                      props.couponMessage.startsWith("Đã")
-                        ? "success-message"
-                        : "error-message"
-                    }
-                  >
-                    {props.couponMessage}
-                  </p>
-                )}
-                <small>Thử mã CHAO10 cho đơn từ 100.000đ.</small>
-              </section>
               <OrderSummary totals={props.totals} />
               <button
                 className="btn btn-primary checkout-cta"
@@ -2771,7 +2667,7 @@ function ConfirmationPage({
         </div>
 
         <div className="confirmation-row">
-          <span>Ưu đãi</span>
+          <span>Tổng giảm trừ</span>
           <b>−{money(order.discount)}</b>
         </div>
 
