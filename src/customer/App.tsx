@@ -992,153 +992,155 @@ function App() {
         onBranch={() => setBranchOpen(true)}
       />
       <main className="page-shell">
-        <Route
-          path="/"
-          element={
-            <HomePage
-              branch={branch}
-              onChooseBranch={() => setBranchOpen(true)}
-              onPick={openProduct}
-            />
-          }
-        />
-        <Route
-          path="/menu"
-          element={
-            <MenuPage
-              branch={branch}
-              onChooseBranch={() => setBranchOpen(true)}
-              onPick={openProduct}
-            />
-          }
-        />
-        <Route
-          path="/cart"
-          element={
-            <CartPage
-              branch={branch}
-              onPick={openProduct}
-              cart={cart}
-              selectedCount={selectedCount}
-              totals={totals}
-              onToggle={toggleItem}
-              onToggleAll={toggleAll}
-              onQuantity={updateQuantity}
-              onRemove={removeItem}
-              onEdit={(item) => {
-                setEditingItem(item);
-                setProductToEdit(
-                  products.find((p) => p.id === item.productId) ?? null,
-                );
-              }}
-              onCheckout={() => navigate("/checkout")}
-              onShop={() => navigate("/menu")}
-            />
-          }
-        />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <HomePage
+                branch={branch}
+                onChooseBranch={() => setBranchOpen(true)}
+                onPick={openProduct}
+              />
+            }
+          />
+          <Route
+            path="/menu"
+            element={
+              <MenuPage
+                branch={branch}
+                onChooseBranch={() => setBranchOpen(true)}
+                onPick={openProduct}
+              />
+            }
+          />
+          <Route
+            path="/cart"
+            element={
+              <CartPage
+                branch={branch}
+                onPick={openProduct}
+                cart={cart}
+                selectedCount={selectedCount}
+                totals={totals}
+                onToggle={toggleItem}
+                onToggleAll={toggleAll}
+                onQuantity={updateQuantity}
+                onRemove={removeItem}
+                onEdit={(item) => {
+                  setEditingItem(item);
+                  setProductToEdit(
+                    products.find((p) => p.id === item.productId) ?? null,
+                  );
+                }}
+                onCheckout={() => navigate("/checkout")}
+                onShop={() => navigate("/menu")}
+              />
+            }
+          />
 
-        <Route
-          path="/checkout"
-          element={
-            <CheckoutPage
-              branch={branch}
-              items={selectedItems}
-              count={selectedCount}
-              totals={totals}
-              memberPhone={memberPhone}
-              onMemberPhone={setMemberPhone}
-              matchedMember={matchedMember}
-              usePoints={usePoints}
-              onUsePoints={setUsePoints}
-              paymentMethod={paymentMethod}
-              onPaymentMethod={setPaymentMethod}
-              onSubmit={submitOrder}
-              onBack={() => navigate("/cart")}
-            />
-          }
-        />
-        <Route
-          path="/confirmation"
-          element={
-            <ConfirmationPage
-              order={lastOrder}
-              onShop={() => navigate("/menu")}
-              onBackToCheckout={() => navigate("/checkout")}
-            />
-          }
-        />
-        {/* FAQ */}
-        <Route
-          path="/faqs"
-          element={<FAQsPage />}
-        />
+          <Route
+            path="/checkout"
+            element={
+              <CheckoutPage
+                branch={branch}
+                items={selectedItems}
+                count={selectedCount}
+                totals={totals}
+                memberPhone={memberPhone}
+                onMemberPhone={setMemberPhone}
+                matchedMember={matchedMember}
+                usePoints={usePoints}
+                onUsePoints={setUsePoints}
+                paymentMethod={paymentMethod}
+                onPaymentMethod={setPaymentMethod}
+                onSubmit={submitOrder}
+                onBack={() => navigate("/cart")}
+              />
+            }
+          />
+          <Route
+            path="/confirmation"
+            element={
+              <ConfirmationPage
+                order={lastOrder}
+                onShop={() => navigate("/menu")}
+                onBackToCheckout={() => navigate("/checkout")}
+              />
+            }
+          />
+          {/* FAQ */}
+          <Route
+            path="/faqs"
+            element={<FAQsPage />}
+          />
 
-        {/* TRANG TRA CỨU TÍCH HỢP */}
-        <Route
-          path="/tra-cuu"
-          element={
-            <TraCuuPage
-              orders={orders}
-              members={members}
-              onRequestAction={requestOrderAction}
-              onAdvanceOrderStatus={advanceOrderStatus}
-              demoMode={import.meta.env.DEV}
-            />
-          }
-        />
+          {/* TRANG TRA CỨU TÍCH HỢP */}
+          <Route
+            path="/tra-cuu"
+            element={
+              <TraCuuPage
+                orders={orders}
+                members={members}
+                onRequestAction={requestOrderAction}
+                onAdvanceOrderStatus={advanceOrderStatus}
+                demoMode={import.meta.env.DEV}
+              />
+            }
+          />
 
-        {/* CHUYỂN HƯỚNG ROUTE CŨ */}
-        <Route
-          path="/orders"
-          element={
-            <Navigate to="/tra-cuu" replace />
-          }
-        />
+          {/* CHUYỂN HƯỚNG ROUTE CŨ */}
+          <Route
+            path="/orders"
+            element={
+              <Navigate to="/tra-cuu" replace />
+            }
+          />
 
-        <Route
-          path="/track"
-          element={
-            <Navigate to="/tra-cuu" replace />
-          }
-        />
+          <Route
+            path="/track"
+            element={
+              <Navigate to="/tra-cuu" replace />
+            }
+          />
 
-        <Route
-          path="/member-points"
-          element={
-            <Navigate to="/tra-cuu" replace />
-          }
-        />
+          <Route
+            path="/member-points"
+            element={
+              <Navigate to="/tra-cuu" replace />
+            }
+          />
 
-        <Route
-          path="/membership"
-          element={
-            <Navigate to="/tra-cuu" replace />
-          }
-        />
+          <Route
+            path="/membership"
+            element={
+              <Navigate to="/tra-cuu" replace />
+            }
+          />
 
-        {/* Không còn trang voucher / khuyến mãi */}
-        <Route
-          path="/promotions"
-          element={
-            <Navigate to="/menu" replace />
-          }
-        />
+          {/* Không còn trang voucher / khuyến mãi */}
+          <Route
+            path="/promotions"
+            element={
+              <Navigate to="/menu" replace />
+            }
+          />
 
-        {/* Khiếu nại vẫn là chức năng độc lập */}
-        <Route
-          path="/complaints"
-          element={
-            <ComplaintPage
-              orders={orders}
-              onCreateComplaint={createComplaint}
-            />
-          }
-        />
-        {/* Trang không tìm thấy */}
-        <Route
-          path="*"
-          element={<NotFound />}
-        />
+          {/* Khiếu nại vẫn là chức năng độc lập */}
+          <Route
+            path="/complaints"
+            element={
+              <ComplaintPage
+                orders={orders}
+                onCreateComplaint={createComplaint}
+              />
+            }
+          />
+          {/* Trang không tìm thấy */}
+          <Route
+            path="*"
+            element={<NotFound />}
+          />
+        </Routes>
       </main>
       <BottomNav count={count} />
       <Footer />

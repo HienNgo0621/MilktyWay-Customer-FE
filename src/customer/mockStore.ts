@@ -1,7 +1,4 @@
-import type {
-  MemberProfile,
-  Order,
-} from "./data";
+import type { MemberProfile, Order, OrderStatus } from "./data";
 
 import { mockOrders } from "./mockOrders";
 
@@ -27,13 +24,32 @@ function readJson<T>(key: string, fallback: T): T {
 
     return JSON.parse(raw) as T;
   } catch (error) {
-    console.error(
-      `Không thể đọc dữ liệu ${key}:`,
-      error,
-    );
+    console.error(`Không thể đọc dữ liệu ${key}:`, error);
 
     return fallback;
   }
+}
+
+const VALID_ORDER_STATUSES: OrderStatus[] = [
+  "PENDING_CONFIRMATION",
+  "CONFIRMED",
+  "PREPARING",
+  "READY",
+  "DELIVERING",
+  "COMPLETED",
+  "CANCEL_REQUESTED",
+  "CANCELLED",
+];
+
+function normalizeOrderStatus(value: unknown): OrderStatus {
+  if (
+    typeof value === "string" &&
+    VALID_ORDER_STATUSES.includes(value as OrderStatus)
+  ) {
+    return value as OrderStatus;
+  }
+
+  return "PENDING_CONFIRMATION";
 }
 
 // =====================================================
@@ -60,22 +76,18 @@ export function loadOrders(): Order[] {
     const rawOrders = parsed as Partial<Order>[];
 
     return rawOrders.map((order, index) => {
-      const createdAt =
-        order.createdAt ?? new Date().toISOString();
+      const createdAt = order.createdAt ?? new Date().toISOString();
 
-      const status =
-        order.status ?? "PENDING_CONFIRMATION";
+      const status = normalizeOrderStatus(order.status);
 
       const statusHistory =
-        Array.isArray(order.statusHistory) &&
-        order.statusHistory.length > 0
+        Array.isArray(order.statusHistory) && order.statusHistory.length > 0
           ? order.statusHistory
           : [
               {
                 status,
                 at: createdAt,
-                note:
-                  "Đơn hàng được khôi phục từ dữ liệu phiên bản cũ.",
+                note: "Đơn hàng được khôi phục từ dữ liệu phiên bản cũ.",
               },
             ];
 
@@ -91,18 +103,14 @@ export function loadOrders(): Order[] {
 
         branchName: order.branchName ?? "",
 
-        items: Array.isArray(order.items)
-          ? order.items
-          : [],
+        items: Array.isArray(order.items) ? order.items : [],
 
         subtotal: order.subtotal ?? 0,
         discount: order.discount ?? 0,
         shipping: order.shipping ?? 0,
         total: order.total ?? 0,
 
-        payment:
-          order.payment ??
-          "Thanh toán khi nhận hàng (COD)",
+        payment: order.payment ?? "Thanh toán khi nhận hàng (COD)",
 
         status,
 
@@ -115,9 +123,7 @@ export function loadOrders(): Order[] {
           ? order.actionRequests
           : [],
 
-        complaints: Array.isArray(order.complaints)
-          ? order.complaints
-          : [],
+        complaints: Array.isArray(order.complaints) ? order.complaints : [],
       };
     });
   } catch (error) {
@@ -135,13 +141,8 @@ export function saveOrders(orders: Order[]): boolean {
     const serialized = JSON.stringify(orders);
 
     // Tránh ghi lại cùng một nội dung không cần thiết.
-    if (
-      localStorage.getItem(ORDER_STORAGE_KEY) !== serialized
-    ) {
-      localStorage.setItem(
-        ORDER_STORAGE_KEY,
-        serialized,
-      );
+    if (localStorage.getItem(ORDER_STORAGE_KEY) !== serialized) {
+      localStorage.setItem(ORDER_STORAGE_KEY, serialized);
     }
 
     return true;
@@ -157,10 +158,7 @@ export function saveOrders(orders: Order[]): boolean {
 
 export function loadMemberProfile(): MemberProfile | null {
   try {
-    return readJson<MemberProfile | null>(
-      MEMBER_STORAGE_KEY,
-      null,
-    );
+    return readJson<MemberProfile | null>(MEMBER_STORAGE_KEY, null);
   } catch (error) {
     console.error("Lỗi khi tải hồ sơ hội viên:", error);
     return null;
@@ -171,19 +169,14 @@ export function loadMemberProfile(): MemberProfile | null {
 // SAVE MEMBER PROFILE
 // =====================================================
 
-export function saveMemberProfile(
-  profile: MemberProfile | null,
-): boolean {
+export function saveMemberProfile(profile: MemberProfile | null): boolean {
   try {
     if (profile === null) {
       localStorage.removeItem(MEMBER_STORAGE_KEY);
       return true;
     }
 
-    localStorage.setItem(
-      MEMBER_STORAGE_KEY,
-      JSON.stringify(profile),
-    );
+    localStorage.setItem(MEMBER_STORAGE_KEY, JSON.stringify(profile));
 
     return true;
   } catch (error) {
